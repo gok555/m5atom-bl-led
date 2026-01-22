@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>M5Atom Controller</title>
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIk01QXRvbSBDb250cm9sbGVyIiwKICAic2hvcnRfbmFtZSI6ICJNNUF0b20iLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiIzEyMTIxMiIsCiAgInRoZW1lX2NvbG9yIjogIiMxMjEyMTIiLAogICJpY29ucyI6IFtdCn0=">
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-color: #ffffff;
+            --primary-color: #bb86fc;
+            --success-color: #03dac6;
+            --error-color: #cf6679;
+            --on-btn-color: #00e676;
+            --off-btn-color: #ff1744;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            text-align: center;
+        }
+
+        h1 { margin-bottom: 20px; font-size: 1.5rem; }
+
+        .status {
+            margin-bottom: 30px;
+            padding: 10px 20px;
+            border-radius: 20px;
+            background-color: var(--card-bg);
+            font-size: 0.9rem;
+            color: #888;
+            transition: all 0.3s;
+        }
+        .status.connected { color: var(--success-color); border: 1px solid var(--success-color); }
+        .status.disconnected { color: var(--error-color); }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 80%;
+            max-width: 300px;
+        }
+
+        button {
+            border: none;
+            border-radius: 12px;
+            padding: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        button:active { transform: scale(0.95); }
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        #btn-connect { background-color: var(--primary-color); color: #000; margin-bottom: 20px; }
+        #btn-on { background-color: var(--on-btn-color); text-transform: uppercase; }
+        #btn-off { background-color: var(--off-btn-color); text-transform: uppercase; }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <h1>M5Atom S3 Remote</h1>
+    
+    <div id="status" class="status disconnected">未接続</div>
+
+    <div class="controls">
+        <button id="btn-connect">CONNECT DEVICE</button>
+        
+        <div id="control-panel" class="hidden">
+            <button id="btn-on">ON (Green)</button>
+            <button id="btn-off">OFF (Black)</button>
+        </div>
+    </div>
+
+    <script>
+        // Nordic UART Service UUIDs
+        const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+        const CHARACTERISTIC_UUID_RX = "6e400002-b5a3-f393-e0a9-e50E24dcca9e"; // Phone writes to this
+
+        let device, server, service, characteristic;
+
+        const btnConnect = document.getElementById('btn-connect');
+        const btnOn = document.getElementById('btn-on');
+        const btnOff = document.getElementById('btn-off');
+        const statusDiv = document.getElementById('status');
+        const controlPanel = document.getElementById('control-panel');
+
+        btnConnect.addEventListener('click', connect);
+        btnOn.addEventListener('click', () => sendCommand('on'));
+        btnOff.addEventListener('click', () => sendCommand('off'));
+
+        async function connect() {
+            try {
+                updateStatus('デバイスを探しています...', false);
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [{ namePrefix: 'M5Atom' }],
+                    optionalServices: [SERVICE_UUID]
+                });
+
+                device.addEventListener('gattserverdisconnected', onDisconnected);
+
+                updateStatus('接続中...', false);
+                server = await device.gatt.connect();
+                service = await server.getPrimaryService(SERVICE_UUID);
+                characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID_RX);
+
+                updateStatus('接続完了', true);
+                controlPanel.classList.remove('hidden'); // Show controls when connected, keep Connect button visible for reconnect if needed, or hide it if preferred.
+                btnConnect.classList.add('hidden'); // Hide connect button
+                
+            } catch (error) {
+                console.error(error);
+                updateStatus('接続キャンセル/エラー: ' + error, false);
+            }
+        }
+
+        function onDisconnected() {
+            updateStatus('切断されました', false);
+            controlPanel.classList.add('hidden');
+            btnConnect.classList.remove('hidden');
+        }
+
+        async function sendCommand(cmd) {
+            if (!characteristic) return;
+            try {
+                const encoder = new TextEncoder();
+                await characteristic.writeValue(encoder.encode(cmd));
+                console.log('Sent:', cmd);
+            } catch (error) {
+                console.error(error);
+                updateStatus('送信エラー', false);
+            }
+        }
+
+        function updateStatus(msg, isConnected) {
+            statusDiv.textContent = msg;
+            statusDiv.className = 'status ' + (isConnected ? 'connected' : 'disconnected');
+        }
+    </script>
+</body>
+</html>
