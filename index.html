@@ -3,7 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>M5Atom CAN Remote</title>
+    <title>M5Atom CAN Remote (Debug)</title>
+    <!-- Error Handler -->
+    <script>
+        window.onerror = function (msg, url, line) {
+            alert("JS Error: " + msg + "\nLine: " + line);
+            return false;
+        };
+    </script>
     <link rel="manifest"
         href="data:application/json;base64,ewogICJuYW1lIjogIk01QXRvbSBDQU4gUmVtb3RlIiwKICAic2hvcnRfbmFtZSI6ICJNNUNBTiIsCiAgInN0YXJ0X3VybCI6ICIuIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjMTIxMjEyIiwKICAidGhlbWVfY29sb3IiOiAiIzEyMTIxMiIsCiAgImljb25zIjogW10KfQ==">
     <style>
@@ -210,7 +217,7 @@
 </head>
 <body>
     <div class="header">
-        <h3 style="margin:5px 0;">M5Atom CAN Remote</h3>
+        <h3 style="margin:5px 0;">M5Atom CAN Remote (v6)</h3>
         <div id="status" class="status disconnected">未接続</div>
     </div>
     <button id="btn-connect" class="main-btn">CONNECT DEVICE</button>
@@ -282,17 +289,19 @@
         const CHARACTERISTIC_UUID_RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
         let device, server, service, characteristic;
         // Init UI
-        const byteCols = document.getElementById('byte-cols');
-        for (let i = 0; i < 8; i++) {
-            let col = document.createElement('div');
-            col.className = 'byte-col';
-            col.innerHTML = `
-                <input type="number" id="b${i}" value="0" min="0" max="255">
-                <button id="sw${i}" class="sw-btn off">OFF</button>
-                <span>${i}</span>
-            `;
-            byteCols.appendChild(col);
-        }
+        try {
+            const byteCols = document.getElementById('byte-cols');
+            for (let i = 0; i < 8; i++) {
+                let col = document.createElement('div');
+                col.className = 'byte-col';
+                col.innerHTML = `
+                    <input type="number" id="b${i}" value="0" min="0" max="255">
+                    <button id="sw${i}" class="sw-btn off">OFF</button>
+                    <span>${i}</span>
+                `;
+                byteCols.appendChild(col);
+            }
+        } catch (e) { alert("Init Error: " + e); }
         // Refs
         const els = {
             id: document.getElementById('can-id'),
@@ -301,63 +310,68 @@
             advBit: document.getElementById('adv-bit'),
         };
         function getBitMask(bitIdx) {
-            // Assuming LSB First as default for simplicity now, or match previous
             return (1 << bitIdx);
         }
         function updateSwitches() {
-            let tBit = parseInt(els.gBit.value);
-            let mask = getBitMask(tBit);
-            for (let i = 0; i < 8; i++) {
-                let val = parseInt(document.getElementById('b' + i).value) || 0;
-                let btn = document.getElementById('sw' + i);
-                if ((val & mask) !== 0) {
-                    btn.className = 'sw-btn on';
-                    btn.textContent = 'ON';
-                } else {
-                    btn.className = 'sw-btn off';
-                    btn.textContent = 'OFF';
+            try {
+                let tBit = parseInt(els.gBit.value);
+                let mask = getBitMask(tBit);
+                for (let i = 0; i < 8; i++) {
+                    let val = parseInt(document.getElementById('b' + i).value) || 0;
+                    let btn = document.getElementById('sw' + i);
+                    if ((val & mask) !== 0) {
+                        btn.className = 'sw-btn on';
+                        btn.textContent = 'ON';
+                    } else {
+                        btn.className = 'sw-btn off';
+                        btn.textContent = 'OFF';
+                    }
                 }
-            }
-            save();
+                save();
+            } catch (e) { console.error(e); }
         }
         function toggleByte(byteIdx) {
             let tBit = parseInt(els.gBit.value);
             let mask = getBitMask(tBit);
             let input = document.getElementById('b' + byteIdx);
             let val = parseInt(input.value) || 0;
-            // Toggle
             if ((val & mask) !== 0) {
-                val &= ~mask; // Turn OFF
+                val &= ~mask;
             } else {
-                val |= mask; // Turn ON
+                val |= mask;
             }
             input.value = val;
             updateSwitches();
-            sendManual(); // Auto send on toggle
+            sendManual();
         }
         function save() {
-            localStorage.setItem('c5_id', els.id.value);
-            localStorage.setItem('c5_gbit', els.gBit.value);
-            for (let i = 0; i < 8; i++) localStorage.setItem('c5_b' + i, document.getElementById('b' + i).value);
+            try {
+                localStorage.setItem('c6_id', els.id.value);
+                localStorage.setItem('c6_gbit', els.gBit.value);
+                for (let i = 0; i < 8; i++) localStorage.setItem('c6_b' + i, document.getElementById('b' + i).value);
+            } catch (e) { }
         }
         function load() {
-            if (localStorage.getItem('c5_id')) els.id.value = localStorage.getItem('c5_id');
-            if (localStorage.getItem('c5_gbit')) els.gBit.value = localStorage.getItem('c5_gbit');
-            for (let i = 0; i < 8; i++) if (localStorage.getItem('c5_b' + i)) document.getElementById('b' + i).value = localStorage.getItem('c5_b' + i);
-            updateSwitches();
+            try {
+                if (localStorage.getItem('c6_id')) els.id.value = localStorage.getItem('c6_id');
+                if (localStorage.getItem('c6_gbit')) els.gBit.value = localStorage.getItem('c6_gbit');
+                for (let i = 0; i < 8; i++) if (localStorage.getItem('c6_b' + i)) document.getElementById('b' + i).value = localStorage.getItem('c6_b' + i);
+                updateSwitches();
+            } catch (e) { alert("Load Error: " + e); }
         }
         // Listeners
-        for (let i = 0; i < 8; i++) {
-            document.getElementById('b' + i).addEventListener('input', updateSwitches);
-            document.getElementById('sw' + i).addEventListener('click', () => toggleByte(i));
-        }
-        els.gBit.addEventListener('change', updateSwitches);
-        document.getElementById('btn-connect').addEventListener('click', connect);
-        document.getElementById('btn-send-manual').addEventListener('click', sendManual);
-        // Custom Button Logic
-        document.getElementById('btn-on-custom').addEventListener('click', () => sendAdv(true));
-        document.getElementById('btn-off-custom').addEventListener('click', () => sendAdv(false));
-        load();
+        try {
+            for (let i = 0; i < 8; i++) {
+                document.getElementById('b' + i).addEventListener('input', updateSwitches);
+                document.getElementById('sw' + i).addEventListener('click', () => toggleByte(i));
+            }
+            els.gBit.addEventListener('change', updateSwitches);
+            document.getElementById('btn-connect').addEventListener('click', connect);
+            document.getElementById('btn-send-manual').addEventListener('click', sendManual);
+            document.getElementById('btn-on-custom').addEventListener('click', () => sendAdv(true));
+            document.getElementById('btn-off-custom').addEventListener('click', () => sendAdv(false));
+            load();
+        } catch (e) { alert("Listener Error: " + e); }
         async function connect() {
             try {
                 document.getElementById('status').textContent = 'Connecting...';
@@ -367,10 +381,13 @@
                 service = await server.getPrimaryService(SERVICE_UUID);
                 characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID_RX);
                 document.getElementById('status').className = 'status connected';
-                document.getElementById('status').textContent = 'Connected';
+                document.getElementById('status').textContent = 'Connected (v6)';
                 document.getElementById('main-ui').classList.remove('hidden');
                 document.getElementById('btn-connect').classList.add('hidden');
-            } catch (e) { console.error(e); document.getElementById('status').textContent = 'Err'; }
+            } catch (e) {
+                alert("Connect Error: " + e);
+                document.getElementById('status').textContent = 'Err';
+            }
         }
         function onDisc() {
             document.getElementById('main-ui').classList.add('hidden');
@@ -386,10 +403,9 @@
                 hex += v.toString(16).padStart(2, '0');
             }
             const cmd = `CAN:${els.id.value}:${hex}`;
-            try { await characteristic.writeValue(new TextEncoder().encode(cmd)); } catch (e) { }
+            try { await characteristic.writeValue(new TextEncoder().encode(cmd)); } catch (e) { alert("Send Error:" + e); }
         }
         async function sendAdv(isOn) {
-            // Updates the specific byte in the inputs too
             let tB = parseInt(els.advByte.value);
             let tBit = parseInt(els.advBit.value);
             let mask = (1 << tBit);
