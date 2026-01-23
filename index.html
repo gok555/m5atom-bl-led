@@ -3,11 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>M5Atom CAN Remote (v7 Trace)</title>
-    <!-- Error Handler -->
+    <title>M5Atom CAN v8 (Log)</title>
+    <!-- On-Screen Console -->
     <script>
+        function log(msg) {
+            const l = document.getElementById('log-box');
+            if (l) {
+                l.innerHTML += "<div>" + msg + "</div>";
+                l.scrollTop = l.scrollHeight; // Auto scroll
+            }
+            console.log(msg);
+        }
         window.onerror = function (msg, url, line) {
-            alert("SYS Error: " + msg + "\nLine: " + line);
+            log("ERR: " + msg + " L:" + line);
             return false;
         };
     </script>
@@ -202,19 +210,26 @@
             color: white;
             font-weight: bold;
         }
-        #btn-on-custom {
-            background: var(--on-btn-color);
-        }
-        #btn-off-custom {
-            background: var(--off-btn-color);
+        #log-box {
+            width: 90%;
+            height: 100px;
+            background: #000;
+            color: #0f0;
+            font-family: monospace;
+            font-size: 0.7rem;
+            overflow-y: scroll;
+            margin: 10px auto;
+            padding: 5px;
+            border: 1px solid #333;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h3 style="margin:5px 0;">M5Atom CAN Remote (v7)</h3>
+        <h3 style="margin:5px 0;">M5Atom CAN Remote (v8)</h3>
         <div id="status" class="status disconnected">init...</div>
     </div>
+    <div id="log-box">Log started...<br></div>
     <button id="btn-connect" class="main-btn" onclick="connect()">CONNECT DEVICE</button>
     <div id="main-ui" class="container hidden">
         <div class="row">
@@ -273,9 +288,9 @@
         </div>
     </div>
     <script>
-        // TRACE 1
-        console.log("Script Start");
-        // alert("TRACE: Script Start"); // Commented out to be less annoying, unless needed
+        // Start
+        log("JS Start. Browser: " + navigator.userAgent);
+        log("BT API: " + (navigator.bluetooth ? "YES" : "NO!!"));
         const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
         const CHARACTERISTIC_UUID_RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
         let device, server, service, characteristic;
@@ -292,8 +307,8 @@
                 `;
                 byteCols.appendChild(col);
             }
-            // alert("TRACE: UI Built");
-        } catch (e) { alert("Init Error: " + e); }
+            log("UI built");
+        } catch (e) { log("Init Error: " + e); }
         // Refs
         const els = {
             id: document.getElementById('can-id'),
@@ -318,9 +333,10 @@
                     }
                 }
                 save();
-            } catch (e) { console.error(e); }
+            } catch (e) { log("Update Error: " + e); }
         }
         function toggleByte(byteIdx) {
+            log("Toggle B" + byteIdx);
             let tBit = parseInt(els.gBit.value);
             let mask = getBitMask(tBit);
             let input = document.getElementById('b' + byteIdx);
@@ -332,18 +348,18 @@
         }
         function save() {
             try {
-                localStorage.setItem('c7_id', els.id.value);
-                localStorage.setItem('c7_gbit', els.gBit.value);
-                for (let i = 0; i < 8; i++) localStorage.setItem('c7_b' + i, document.getElementById('b' + i).value);
+                localStorage.setItem('c8_id', els.id.value);
+                localStorage.setItem('c8_gbit', els.gBit.value);
+                for (let i = 0; i < 8; i++) localStorage.setItem('c8_b' + i, document.getElementById('b' + i).value);
             } catch (e) { }
         }
         function load() {
             try {
-                if (localStorage.getItem('c7_id')) els.id.value = localStorage.getItem('c7_id');
-                if (localStorage.getItem('c7_gbit')) els.gBit.value = localStorage.getItem('c7_gbit');
-                for (let i = 0; i < 8; i++) if (localStorage.getItem('c7_b' + i)) document.getElementById('b' + i).value = localStorage.getItem('c7_b' + i);
+                if (localStorage.getItem('c8_id')) els.id.value = localStorage.getItem('c8_id');
+                if (localStorage.getItem('c8_gbit')) els.gBit.value = localStorage.getItem('c8_gbit');
+                for (let i = 0; i < 8; i++) if (localStorage.getItem('c8_b' + i)) document.getElementById('b' + i).value = localStorage.getItem('c8_b' + i);
                 updateSwitches();
-            } catch (e) { alert("Load Error: " + e); }
+            } catch (e) { log("Load Error: " + e); }
         }
         // Listeners
         try {
@@ -352,48 +368,50 @@
                 document.getElementById('sw' + i).addEventListener('click', () => toggleByte(i));
             }
             els.gBit.addEventListener('change', updateSwitches);
-            // Using inline onclick for connect button as backup, but removing listener to be safe? 
-            // Actually, keep listener. If onclick works, listener also works.
-            // document.getElementById('btn-connect').addEventListener('click', connect); // Handled by inline onclick
             document.getElementById('btn-send-manual').addEventListener('click', sendManual);
             document.getElementById('btn-on-custom').addEventListener('click', () => sendAdv(true));
             document.getElementById('btn-off-custom').addEventListener('click', () => sendAdv(false));
             load();
-            document.getElementById('status').textContent = 'Ready';
-        } catch (e) { alert("Listener Error: " + e); }
+            document.getElementById('status').textContent = 'Ready (v8)';
+            log("Init Complete. Ready.");
+        } catch (e) { log("Listener Error: " + e); }
         async function connect() {
-            alert("TRACE: Connect Clicked. BT Available: " + (navigator.bluetooth ? "YES" : "NO"));
+            log("BTN Clicked. Start request...");
+            if (!navigator.bluetooth) { log("BT NOT SUPPORTED HERE"); return; }
             try {
                 document.getElementById('status').textContent = 'Connecting...';
                 device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'M5Atom' }], optionalServices: [SERVICE_UUID] });
+                log("Device selected: " + device.name);
                 device.addEventListener('gattserverdisconnected', onDisc);
                 server = await device.gatt.connect();
                 service = await server.getPrimaryService(SERVICE_UUID);
                 characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID_RX);
                 document.getElementById('status').className = 'status connected';
-                document.getElementById('status').textContent = 'Connected (v7)';
+                document.getElementById('status').textContent = 'Connected';
+                log("Connected!");
                 document.getElementById('main-ui').classList.remove('hidden');
                 document.getElementById('btn-connect').classList.add('hidden');
             } catch (e) {
-                alert("Connect Error: " + e);
+                log("Connect Fail: " + e);
                 document.getElementById('status').textContent = 'Err';
             }
         }
         function onDisc() {
+            log("Disconnected");
             document.getElementById('main-ui').classList.add('hidden');
             document.getElementById('btn-connect').classList.remove('hidden');
             document.getElementById('status').className = 'status disconnected';
             document.getElementById('status').textContent = 'Disconnected';
         }
         async function sendManual() {
-            if (!characteristic) return;
+            if (!characteristic) { log("Send: No Conn"); return; }
             let hex = '';
             for (let i = 0; i < 8; i++) {
                 let v = parseInt(document.getElementById('b' + i).value) || 0;
                 hex += v.toString(16).padStart(2, '0');
             }
             const cmd = `CAN:${els.id.value}:${hex}`;
-            try { await characteristic.writeValue(new TextEncoder().encode(cmd)); } catch (e) { alert("Send Error:" + e); }
+            try { await characteristic.writeValue(new TextEncoder().encode(cmd)); log("Sent: " + cmd); } catch (e) { log("Send Fail: " + e); }
         }
         async function sendAdv(isOn) {
             let tB = parseInt(els.advByte.value);
