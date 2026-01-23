@@ -16,151 +16,203 @@
             --error-color: #cf6679;
             --on-btn-color: #00e676;
             --off-btn-color: #ff1744;
-            --input-bg: #2c2c2c;
+            --input-bg: #ffffff;
+            --input-text: #000000;
             --highlight-color: #ff9800;
         }
         body {
-            font-family: 'Segoe UI', sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             margin: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
             min-height: 100vh;
-            text-align: center;
-            padding: 20px;
+            padding: 10px;
             box-sizing: border-box;
         }
+        /* Header & Status */
+        .header {
+            text-align: center;
+            margin-bottom: 15px;
+            width: 100%;
+            max-width: 450px;
+        }
         .status {
-            margin-bottom: 20px;
-            padding: 8px 16px;
-            border-radius: 20px;
-            background-color: var(--card-bg);
-            color: #888;
-            border: 1px solid #333;
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 15px;
+            background: #333;
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-top: 5px;
         }
         .status.connected {
             color: var(--success-color);
-            border-color: var(--success-color);
+            border: 1px solid var(--success-color);
         }
-        .controls {
+        .status.disconnected {
+            color: var(--error-color);
+        }
+        .container {
             width: 100%;
-            max-width: 360px;
-        }
-        .panel {
-            background: var(--card-bg);
+            max-width: 450px;
+            background: #2d2d2d;
             padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 15px;
-            text-align: left;
-        }
-        .panel h3 {
-            margin: 0 0 10px 0;
-            font-size: 1rem;
-            color: var(--primary-color);
-            border-bottom: 1px solid #333;
-            padding-bottom: 5px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
         }
         label {
-            display: block;
             font-size: 0.8rem;
-            color: #aaa;
-            margin-bottom: 5px;
+            color: #ccc;
+            display: block;
+            margin-bottom: 4px;
         }
         input[type="text"],
         input[type="number"],
         select {
-            width: 100%;
             background: var(--input-bg);
-            border: 1px solid #444;
-            color: white;
-            padding: 8px;
-            border-radius: 6px;
+            color: var(--input-text);
+            border: 1px solid #999;
+            border-radius: 4px;
+            padding: 6px;
             font-size: 1rem;
             box-sizing: border-box;
-            font-family: monospace;
-            margin-bottom: 10px;
         }
-        /* Byte Visualizer */
-        .byte-container {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 5px;
-            margin-bottom: 10px;
-        }
-        .byte-box {
-            background: #333;
-            padding: 5px;
-            text-align: center;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 0.9rem;
-            position: relative;
-        }
-        .byte-box.active {
-            border: 1px solid var(--highlight-color);
-            background: #442200;
-        }
-        .byte-label {
-            font-size: 0.6rem;
-            color: #666;
-            position: absolute;
-            top: -6px;
-            left: 2px;
-        }
-        .bit-selector {
+        /* ID Input */
+        .row {
             display: flex;
             gap: 10px;
             align-items: center;
-            justify-content: space-between;
-            background: #2a2a2a;
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }
-        .bit-dots {
+        .id-group {
+            flex: 0 0 100px;
+        }
+        .id-group input {
+            width: 100%;
+            font-family: monospace;
+        }
+        /* Data Bytes (Horizontal) */
+        .data-label {
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+            color: #eee;
+        }
+        .byte-container {
             display: flex;
-            gap: 3px;
+            gap: 4px;
+            justify-content: space-between;
+            margin-bottom: 5px;
         }
-        .bit-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #444;
+        .byte-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        .bit-dot.active {
-            background: var(--highlight-color);
+        .byte-col input {
+            width: 100%;
+            padding: 5px 2px;
+            text-align: center;
+            font-size: 0.9rem;
+            font-family: monospace;
+            min-width: 0;
         }
-        .btn-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
+        .byte-col span {
+            font-size: 0.7rem;
+            color: #888;
+            margin-top: 2px;
         }
+        .byte-col.active input {
+            border: 2px solid var(--highlight-color);
+            background-color: #fff8e1;
+        }
+        /* Buttons */
         button {
             border: none;
-            border-radius: 8px;
-            padding: 15px;
-            font-size: 1.1rem;
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 1rem;
             font-weight: bold;
             cursor: pointer;
             color: white;
             width: 100%;
+            transition: opacity 0.2s;
         }
         button:active {
-            transform: scale(0.98);
+            opacity: 0.8;
         }
         #btn-connect {
-            background-color: var(--primary-color);
+            background: var(--primary-color);
             color: #000;
-            width: 100%;
+            margin-bottom: 10px;
+        }
+        #btn-send-manual {
+            background: #555;
+            margin-top: 5px;
+            font-size: 0.9rem;
+            padding: 8px;
+        }
+        .switch-area {
+            background: #3a3a3a;
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #444;
+        }
+        .switch-title {
+            font-size: 0.9rem;
+            color: #bbb;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #555;
+            padding-bottom: 5px;
+        }
+        .config-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .config-group {
+            flex: 1;
+        }
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
         }
         #btn-on {
-            background-color: var(--on-btn-color);
+            background: var(--on-btn-color);
+            flex: 1;
         }
         #btn-off {
-            background-color: var(--off-btn-color);
+            background: var(--off-btn-color);
+            flex: 1;
+        }
+        /* Toggle LSB/MSB */
+        .radio-group {
+            display: flex;
+            background: #222;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        .radio-opt {
+            flex: 1;
+            text-align: center;
+            padding: 5px;
+            font-size: 0.75rem;
+            color: #888;
+            cursor: pointer;
+            border-right: 1px solid #444;
+        }
+        .radio-opt:last-child {
+            border-right: none;
+        }
+        .radio-opt.active {
+            background: #666;
+            color: white;
         }
         .hidden {
             display: none;
@@ -168,28 +220,32 @@
     </style>
 </head>
 <body>
-    <div class="panel" style="text-align:center;">
-        <h2 style="margin:0;">M5Atom CAN Config</h2>
-        <div id="status" class="status disconnected">未接続</div>
-        <button id="btn-connect">CONNECT DEVICE</button>
+    <div class="header">
+        <h2 style="margin:5px 0;">M5Atom CAN</h2>
+        <div id="status" class="status disconnected">Not Connected</div>
     </div>
-    <div id="control-panel" class="controls hidden">
-        <!-- CAN ID Setting -->
-        <div class="panel">
-            <h3>1. CAN ID Setting</h3>
-            <label>CAN ID (Hex)</label>
-            <input type="text" id="can-id" value="123" placeholder="e.g. 18F00001">
-        </div>
-        <!-- Frame Editor -->
-        <div class="panel">
-            <h3>2. Frame Bit Mapper</h3>
-            <label>Base Frame Data (8 Bytes Hex)</label>
-            <input type="text" id="base-frame" value="0000000000000000" maxlength="16" placeholder="0000000000000000">
-            <div class="byte-container" id="byte-viz">
-                <!-- Generated by JS -->
+    <button id="btn-connect">CONNECT DEVICE</button>
+    <div id="main-ui" class="container hidden">
+        <div class="row">
+            <div class="id-group">
+                <label>ID (Hex)</label>
+                <input type="text" id="can-id" value="500" placeholder="500">
             </div>
-            <div class="bit-selector">
-                <div>
+            <div style="flex:1; display:flex; align-items:flex-end;">
+                <label style="margin-bottom:8px; margin-left:10px;">Length: 8</label>
+            </div>
+        </div>
+        <div class="data-label">Data (Decimal 0-255)</div>
+        <div class="byte-container" id="byte-inputs">
+            <!-- 0-7 Inputs Generated JS -->
+        </div>
+        <!-- Manual Send -->
+        <button id="btn-send-manual">Send Frame (Manual)</button>
+        <!-- Remote Switch Config -->
+        <div class="switch-area">
+            <div class="switch-title">Remote Switch Configuration</div>
+            <div class="config-row">
+                <div class="config-group">
                     <label>Target Byte (0-7)</label>
                     <select id="target-byte">
                         <option value="0">Byte 0</option>
@@ -202,123 +258,134 @@
                         <option value="7">Byte 7</option>
                     </select>
                 </div>
-                <div>
+                <div class="config-group">
                     <label>Target Bit (0-7)</label>
                     <select id="target-bit">
-                        <option value="0">Bit 0 (LSB)</option>
-                        <option value="1">Bit 1</option>
-                        <option value="2">Bit 2</option>
-                        <option value="3">Bit 3</option>
-                        <option value="4">Bit 4</option>
-                        <option value="5">Bit 5</option>
-                        <option value="6">Bit 6</option>
-                        <option value="7">Bit 7 (MSB)</option>
+                        <option value="0">0</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
                     </select>
                 </div>
             </div>
-            <p style="font-size:0.8rem; color:#888;">
-                Switch will toggle <b>Byte <span id="disp-byte">0</span></b>, <b>Bit <span id="disp-bit">0</span></b>.
-            </p>
-        </div>
-        <div class="btn-group">
-            <button id="btn-on">ON (1)</button>
-            <button id="btn-off">OFF (0)</button>
+            <label>Bit Order</label>
+            <div class="radio-group">
+                <div class="radio-opt active" id="opt-lsb" onclick="setOrder('LSB')">LSB First (Std)</div>
+                <div class="radio-opt" id="opt-msb" onclick="setOrder('MSB')">MSB First (Rev)</div>
+            </div>
+            <div class="btn-row">
+                <button id="btn-on">ON (1)</button>
+                <button id="btn-off">OFF (0)</button>
+            </div>
+            <div style="font-size:0.7rem; color:#aaa; margin-top:5px; text-align:center;">
+                ON/OFF buttons send the data above but toggle the selected bit.
+            </div>
         </div>
     </div>
     <script>
         const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
         const CHARACTERISTIC_UUID_RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
         let device, server, service, characteristic;
-        // UI Refs
+        let bitOrder = 'LSB';
+        // Init Byte Inputs
+        const byteContainer = document.getElementById('byte-inputs');
+        for (let i = 0; i < 8; i++) {
+            let col = document.createElement('div');
+            col.className = 'byte-col';
+            col.id = 'col-' + i;
+            col.innerHTML = `<input type="number" id="b${i}" value="0" min="0" max="255"><span>${i}</span>`;
+            byteContainer.appendChild(col);
+        }
+        // Refs
         const els = {
-            status: document.getElementById('status'),
-            panel: document.getElementById('control-panel'),
-            connect: document.getElementById('btn-connect'),
             id: document.getElementById('can-id'),
-            base: document.getElementById('base-frame'),
             tByte: document.getElementById('target-byte'),
             tBit: document.getElementById('target-bit'),
-            viz: document.getElementById('byte-viz'),
-            dispByte: document.getElementById('disp-byte'),
-            dispBit: document.getElementById('disp-bit'),
+            lsb: document.getElementById('opt-lsb'),
+            msb: document.getElementById('opt-msb')
         };
-        // Initialize Viz
-        function initViz() {
-            els.viz.innerHTML = '';
-            for (let i = 0; i < 8; i++) {
-                let div = document.createElement('div');
-                div.className = 'byte-box';
-                div.id = 'byte-box-' + i;
-                div.innerHTML = `<span class="byte-label">${i}</span><span id="val-${i}">00</span>`;
-                els.viz.appendChild(div);
-            }
-            updateViz();
+        function setOrder(mode) {
+            bitOrder = mode;
+            els.lsb.className = mode === 'LSB' ? 'radio-opt active' : 'radio-opt';
+            els.msb.className = mode === 'MSB' ? 'radio-opt active' : 'radio-opt';
+            save();
         }
-        function updateViz() {
-            let hex = els.base.value.padEnd(16, '0');
+        function highlight() {
             let tB = parseInt(els.tByte.value);
             for (let i = 0; i < 8; i++) {
-                let box = document.getElementById('byte-box-' + i);
-                let valSpan = document.getElementById('val-' + i);
-                let byteVal = hex.substring(i * 2, i * 2 + 2);
-                valSpan.textContent = byteVal;
-                if (i === tB) box.classList.add('active');
-                else box.classList.remove('active');
+                let col = document.getElementById('col-' + i);
+                if (i === tB) col.classList.add('active');
+                else col.classList.remove('active');
             }
-            els.dispByte.textContent = tB;
-            els.dispBit.textContent = els.tBit.value;
-            localStorage.setItem('can_conf_id', els.id.value);
-            localStorage.setItem('can_conf_base', els.base.value);
-            localStorage.setItem('can_conf_tb', els.tByte.value);
-            localStorage.setItem('can_conf_tbit', els.tBit.value);
+            save();
         }
-        // Load Settings
-        if (localStorage.getItem('can_conf_id')) els.id.value = localStorage.getItem('can_conf_id');
-        if (localStorage.getItem('can_conf_base')) els.base.value = localStorage.getItem('can_conf_base');
-        if (localStorage.getItem('can_conf_tb')) els.tByte.value = localStorage.getItem('can_conf_tb');
-        if (localStorage.getItem('can_conf_tbit')) els.tBit.value = localStorage.getItem('can_conf_tbit');
-        // Listeners
-        els.base.addEventListener('input', updateViz);
-        els.tByte.addEventListener('change', updateViz);
-        els.tBit.addEventListener('change', updateViz);
-        initViz();
-        els.connect.addEventListener('click', connect);
+        function save() {
+            localStorage.setItem('can4_id', els.id.value);
+            localStorage.setItem('can4_tb', els.tByte.value);
+            localStorage.setItem('can4_tbit', els.tBit.value);
+            localStorage.setItem('can4_order', bitOrder);
+            for (let i = 0; i < 8; i++) localStorage.setItem('can4_b' + i, document.getElementById('b' + i).value);
+        }
+        function load() {
+            if (localStorage.getItem('can4_id')) els.id.value = localStorage.getItem('can4_id');
+            if (localStorage.getItem('can4_tb')) els.tByte.value = localStorage.getItem('can4_tb');
+            if (localStorage.getItem('can4_tbit')) els.tBit.value = localStorage.getItem('can4_tbit');
+            if (localStorage.getItem('can4_order')) setOrder(localStorage.getItem('can4_order'));
+            for (let i = 0; i < 8; i++) {
+                if (localStorage.getItem('can4_b' + i)) document.getElementById('b' + i).value = localStorage.getItem('can4_b' + i);
+            }
+            highlight();
+        }
+        els.tByte.addEventListener('change', highlight);
+        els.tBit.addEventListener('change', highlight);
+        for (let i = 0; i < 8; i++) document.getElementById('b' + i).addEventListener('input', save);
+        document.getElementById('btn-connect').addEventListener('click', connect);
+        document.getElementById('btn-send-manual').addEventListener('click', () => send(null)); // null = no toggle
         document.getElementById('btn-on').addEventListener('click', () => send(true));
         document.getElementById('btn-off').addEventListener('click', () => send(false));
+        load();
         async function connect() {
             try {
-                els.status.textContent = '検索中...';
+                document.getElementById('status').textContent = 'Connecting...';
                 device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'M5Atom' }], optionalServices: [SERVICE_UUID] });
-                device.addEventListener('gattserverdisconnected', () => { els.panel.classList.add('hidden'); els.connect.classList.remove('hidden'); els.status.textContent = '未接続'; els.status.className = 'status disconnected'; });
+                device.addEventListener('gattserverdisconnected', () => {
+                    document.getElementById('main-ui').classList.add('hidden');
+                    document.getElementById('btn-connect').classList.remove('hidden');
+                    document.getElementById('status').className = 'status disconnected';
+                    document.getElementById('status').textContent = 'Disconnected';
+                });
                 server = await device.gatt.connect();
                 service = await server.getPrimaryService(SERVICE_UUID);
                 characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID_RX);
-                els.status.textContent = '接続完了'; els.status.className = 'status connected';
-                els.panel.classList.remove('hidden'); els.connect.classList.add('hidden');
-            } catch (e) { console.error(e); els.status.textContent = 'Err: ' + e; }
+                document.getElementById('status').className = 'status connected';
+                document.getElementById('status').textContent = 'Connected';
+                document.getElementById('main-ui').classList.remove('hidden');
+                document.getElementById('btn-connect').classList.add('hidden');
+            } catch (e) { console.error(e); document.getElementById('status').textContent = 'Error'; }
         }
-        async function send(isOn) {
+        async function send(toggleState) {
             if (!characteristic) return;
-            // Logic: Take Base Frame -> Modify Target Bit -> Send
-            let hex = els.base.value.padEnd(16, '0');
             let bytes = new Uint8Array(8);
-            for (let i = 0; i < 8; i++) bytes[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16) || 0;
-            let tB = parseInt(els.tByte.value);
-            let tBit = parseInt(els.tBit.value);
-            // Apply Bit
-            if (isOn) {
-                bytes[tB] |= (1 << tBit); // Set bit
-            } else {
-                bytes[tB] &= ~(1 << tBit); // Clear bit
+            for (let i = 0; i < 8; i++) {
+                let v = parseInt(document.getElementById('b' + i).value);
+                bytes[i] = isNaN(v) ? 0 : v;
             }
-            // Convert back to Hex String
-            let finalHex = '';
-            for (let i = 0; i < 8; i++) finalHex += bytes[i].toString(16).padStart(2, '0');
-            const cmd = `CAN:${els.id.value}:${finalHex}`;
-            try {
-                await characteristic.writeValue(new TextEncoder().encode(cmd));
-                console.log(cmd);
-            } catch (e) { console.error(e); }
+            // If toggleState is boolean, apply mapping
+            if (toggleState !== null) {
+                let tB = parseInt(els.tByte.value);
+                let tBit = parseInt(els.tBit.value);
+                let actualBit = (bitOrder === 'LSB') ? tBit : (7 - tBit);
+                if (toggleState) bytes[tB] |= (1 << actualBit);
+                else bytes[tB] &= ~(1 << actualBit);
+            }
+            let hex = '';
+            for (let i = 0; i < 8; i++) hex += bytes[i].toString(16).padStart(2, '0');
+            const cmd = `CAN:${els.id.value}:${hex}`;
+            try { await characteristic.writeValue(new TextEncoder().encode(cmd)); } catch (e) { console.error(e); }
         }
     </script>
 </body>
