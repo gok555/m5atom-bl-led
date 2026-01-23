@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>M5Atom CAN v8 (Log)</title>
-    <!-- On-Screen Console -->
+    <title>M5Atom CAN v9</title>
     <script>
         function log(msg) {
             const l = document.getElementById('log-box');
             if (l) {
-                l.innerHTML += "<div>" + msg + "</div>";
-                l.scrollTop = l.scrollHeight; // Auto scroll
+                const d = new Date();
+                l.innerHTML = "<div>[" + d.toLocaleTimeString() + "] " + msg + "</div>" + l.innerHTML;
             }
             console.log(msg);
         }
@@ -18,6 +17,44 @@
             log("ERR: " + msg + " L:" + line);
             return false;
         };
+        // Global function definition
+        window.startBle = async function () {
+            log("BTN: Event Fired!");
+            if (window.isConnecting) return;
+            window.isConnecting = true;
+            if (!navigator.bluetooth) { log("BT NOT SUPPORTED API"); window.isConnecting = false; return; }
+            try {
+                document.getElementById('status').textContent = 'Connecting...';
+                const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+                const CHARACTERISTIC_UUID_RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+                log("Requesting Device...");
+                const device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'M5Atom' }], optionalServices: [SERVICE_UUID] });
+                log("Selected: " + device.name);
+                device.addEventListener('gattserverdisconnected', onDisc);
+                log("Connecting GATT...");
+                const server = await device.gatt.connect();
+                log("Getting Service...");
+                const service = await server.getPrimaryService(SERVICE_UUID);
+                log("Getting Char...");
+                window.characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID_RX);
+                document.getElementById('status').className = 'status connected';
+                document.getElementById('status').textContent = 'Connected (v9)';
+                log("SUCCESS! Connected.");
+                document.getElementById('main-ui').classList.remove('hidden');
+                document.getElementById('btn-connect').style.display = 'none';
+            } catch (e) {
+                log("Connect Fail: " + e);
+                document.getElementById('status').textContent = 'Err';
+            }
+            window.isConnecting = false;
+        };
+        function onDisc() {
+            log("Disconnected");
+            document.getElementById('main-ui').classList.add('hidden');
+            document.getElementById('btn-connect').style.display = 'block';
+            document.getElementById('status').className = 'status disconnected';
+            document.getElementById('status').textContent = 'Disconnected';
+        }
     </script>
     <link rel="manifest"
         href="data:application/json;base64,ewogICJuYW1lIjogIk01QXRvbSBDQU4gUmVtb3RlIiwKICAic2hvcnRfbmFtZSI6ICJNNUNBTiIsCiAgInN0YXJ0X3VybCI6ICIuIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjMTIxMjEyIiwKICAidGhlbWVfY29sb3IiOiAiIzEyMTIxMiIsCiAgImljb25zIjogW10KfQ==">
@@ -179,9 +216,14 @@
             background: #777;
         }
         #btn-connect {
-            background: var(--primary-color);
-            color: #000;
-            margin-bottom: 10px;
+            background: #ff4444;
+            color: white;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            padding: 20px;
+            border: 2px solid white;
+            width: 100%;
+            max-width: 500px;
         }
         .hidden {
             display: none;
@@ -211,8 +253,8 @@
             font-weight: bold;
         }
         #log-box {
-            width: 90%;
-            height: 100px;
+            width: 95%;
+            height: 120px;
             background: #000;
             color: #0f0;
             font-family: monospace;
@@ -221,16 +263,19 @@
             margin: 10px auto;
             padding: 5px;
             border: 1px solid #333;
+            text-align: left;
         }
     </style>
 </head>
 <body>
+    <button id="btn-connect" onclick="startBle()" ontouchstart="startBle()">
+        CONNECT DEVICE (CLICK HERE)
+    </button>
+    <div id="log-box">Log v9 initialized...</div>
     <div class="header">
-        <h3 style="margin:5px 0;">M5Atom CAN Remote (v8)</h3>
+        <h3 style="margin:5px 0;">M5Atom CAN Remote (v9)</h3>
         <div id="status" class="status disconnected">init...</div>
     </div>
-    <div id="log-box">Log started...<br></div>
-    <button id="btn-connect" class="main-btn" onclick="connect()">CONNECT DEVICE</button>
     <div id="main-ui" class="container hidden">
         <div class="row">
             <div class="id-group">
@@ -288,12 +333,6 @@
         </div>
     </div>
     <script>
-        // Start
-        log("JS Start. Browser: " + navigator.userAgent);
-        log("BT API: " + (navigator.bluetooth ? "YES" : "NO!!"));
-        const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
-        const CHARACTERISTIC_UUID_RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
-        let device, server, service, characteristic;
         // Init UI
         try {
             const byteCols = document.getElementById('byte-cols');
@@ -348,16 +387,16 @@
         }
         function save() {
             try {
-                localStorage.setItem('c8_id', els.id.value);
-                localStorage.setItem('c8_gbit', els.gBit.value);
-                for (let i = 0; i < 8; i++) localStorage.setItem('c8_b' + i, document.getElementById('b' + i).value);
+                localStorage.setItem('c9_id', els.id.value);
+                localStorage.setItem('c9_gbit', els.gBit.value);
+                for (let i = 0; i < 8; i++) localStorage.setItem('c9_b' + i, document.getElementById('b' + i).value);
             } catch (e) { }
         }
         function load() {
             try {
-                if (localStorage.getItem('c8_id')) els.id.value = localStorage.getItem('c8_id');
-                if (localStorage.getItem('c8_gbit')) els.gBit.value = localStorage.getItem('c8_gbit');
-                for (let i = 0; i < 8; i++) if (localStorage.getItem('c8_b' + i)) document.getElementById('b' + i).value = localStorage.getItem('c8_b' + i);
+                if (localStorage.getItem('c9_id')) els.id.value = localStorage.getItem('c9_id');
+                if (localStorage.getItem('c9_gbit')) els.gBit.value = localStorage.getItem('c9_gbit');
+                for (let i = 0; i < 8; i++) if (localStorage.getItem('c9_b' + i)) document.getElementById('b' + i).value = localStorage.getItem('c9_b' + i);
                 updateSwitches();
             } catch (e) { log("Load Error: " + e); }
         }
@@ -372,46 +411,18 @@
             document.getElementById('btn-on-custom').addEventListener('click', () => sendAdv(true));
             document.getElementById('btn-off-custom').addEventListener('click', () => sendAdv(false));
             load();
-            document.getElementById('status').textContent = 'Ready (v8)';
+            document.getElementById('status').textContent = 'Ready (v9)';
             log("Init Complete. Ready.");
         } catch (e) { log("Listener Error: " + e); }
-        async function connect() {
-            log("BTN Clicked. Start request...");
-            if (!navigator.bluetooth) { log("BT NOT SUPPORTED HERE"); return; }
-            try {
-                document.getElementById('status').textContent = 'Connecting...';
-                device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'M5Atom' }], optionalServices: [SERVICE_UUID] });
-                log("Device selected: " + device.name);
-                device.addEventListener('gattserverdisconnected', onDisc);
-                server = await device.gatt.connect();
-                service = await server.getPrimaryService(SERVICE_UUID);
-                characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID_RX);
-                document.getElementById('status').className = 'status connected';
-                document.getElementById('status').textContent = 'Connected';
-                log("Connected!");
-                document.getElementById('main-ui').classList.remove('hidden');
-                document.getElementById('btn-connect').classList.add('hidden');
-            } catch (e) {
-                log("Connect Fail: " + e);
-                document.getElementById('status').textContent = 'Err';
-            }
-        }
-        function onDisc() {
-            log("Disconnected");
-            document.getElementById('main-ui').classList.add('hidden');
-            document.getElementById('btn-connect').classList.remove('hidden');
-            document.getElementById('status').className = 'status disconnected';
-            document.getElementById('status').textContent = 'Disconnected';
-        }
         async function sendManual() {
-            if (!characteristic) { log("Send: No Conn"); return; }
+            if (!window.characteristic) { log("Send: No Conn"); return; }
             let hex = '';
             for (let i = 0; i < 8; i++) {
                 let v = parseInt(document.getElementById('b' + i).value) || 0;
                 hex += v.toString(16).padStart(2, '0');
             }
             const cmd = `CAN:${els.id.value}:${hex}`;
-            try { await characteristic.writeValue(new TextEncoder().encode(cmd)); log("Sent: " + cmd); } catch (e) { log("Send Fail: " + e); }
+            try { await window.characteristic.writeValue(new TextEncoder().encode(cmd)); log("Sent: " + cmd); } catch (e) { log("Send Fail: " + e); }
         }
         async function sendAdv(isOn) {
             let tB = parseInt(els.advByte.value);
