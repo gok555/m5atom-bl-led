@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>M5Atom Controller</title>
-    <!-- アイコンなしのPWA設定 -->
-    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIk01QXRvbSBDb250cm9sbGVyIiwKICAic2hvcnRfbmFtZSI6ICJNNUF0b20iLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiIzEyMTIxMiIsCiAgInRoZW1lX2NvbG9yIjogIiMxMjEyMTIiLAogICJpY29ucyI6IFtdCn0=">
+    <title>M5Atom CAN Remote</title>
+    <!-- PWA Manifest -->
+    <link rel="manifest"
+        href="data:application/json;base64,ewogICJuYW1lIjogIk01QXRvbSBDQU4gUmVtb3RlIiwKICAic2hvcnRfbmFtZSI6ICJNNUNBTiIsCiAgInN0YXJ0X3VybCI6ICIuIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjMTIxMjEyIiwKICAidGhlbWVfY29sb3IiOiAiIzEyMTIxMiIsCiAgImljb25zIjogW10KfQ==">
     <style>
         :root {
             --bg-color: #121212;
@@ -16,8 +17,8 @@
             --error-color: #cf6679;
             --on-btn-color: #00e676;
             --off-btn-color: #ff1744;
+            --input-bg: #2c2c2c;
         }
-
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-color);
@@ -27,130 +28,187 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
         }
-
-        h1 { margin-bottom: 20px; font-size: 1.5rem; }
-
+        h1 {
+            margin-bottom: 10px;
+            font-size: 1.5rem;
+        }
+        p {
+            color: #888;
+            font-size: 0.8rem;
+            margin-bottom: 20px;
+        }
         .status {
-            margin-bottom: 30px;
-            padding: 10px 20px;
+            margin-bottom: 20px;
+            padding: 8px 16px;
             border-radius: 20px;
             background-color: var(--card-bg);
             font-size: 0.9rem;
             color: #888;
-            transition: all 0.3s;
         }
-        .status.connected { color: var(--success-color); border: 1px solid var(--success-color); }
-        .status.disconnected { color: var(--error-color); }
-
+        .status.connected {
+            color: var(--success-color);
+            border: 1px solid var(--success-color);
+        }
+        .status.disconnected {
+            color: var(--error-color);
+        }
         .controls {
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            width: 80%;
-            max-width: 300px;
+            gap: 15px;
+            width: 100%;
+            max-width: 320px;
         }
-
+        .input-group {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: left;
+        }
+        .input-group label {
+            display: block;
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+        .input-group input {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid #444;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: monospace;
+            box-sizing: border-box;
+        }
         button {
             border: none;
             border-radius: 12px;
-            padding: 20px;
+            padding: 18px;
             font-size: 1.2rem;
             font-weight: bold;
             cursor: pointer;
-            transition: transform 0.1s, opacity 0.2s;
+            transition: transform 0.1s;
             color: white;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            width: 100%;
         }
-
-        button:active { transform: scale(0.95); }
-        button:disabled { opacity: 0.3; cursor: not-allowed; }
-
-        #btn-connect { background-color: var(--primary-color); color: #000; margin-bottom: 20px; }
-        #btn-on { background-color: var(--on-btn-color); text-transform: uppercase; }
-        #btn-off { background-color: var(--off-btn-color); text-transform: uppercase; }
-
-        .hidden { display: none; }
+        button:active {
+            transform: scale(0.97);
+        }
+        #btn-connect {
+            background-color: var(--primary-color);
+            color: #000;
+        }
+        #btn-on {
+            background-color: var(--on-btn-color);
+        }
+        #btn-off {
+            background-color: var(--off-btn-color);
+        }
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
-
-    <h1>M5Atom S3 Remote</h1>
-    
+    <h1>M5Atom CAN Remote</h1>
+    <p>Baudrate: 1000kbps (1Mbps)</p>
     <div id="status" class="status disconnected">未接続</div>
-
     <div class="controls">
         <button id="btn-connect">CONNECT DEVICE</button>
-        
         <div id="control-panel" class="hidden">
-            <button id="btn-on">ON (Green)</button>
-            <button id="btn-off">OFF (Black)</button>
+            <div class="input-group">
+                <label>CAN ID (Hex, e.g. 123)</label>
+                <input type="text" id="can-id" placeholder="123" value="123">
+            </div>
+            <div class="input-group">
+                <label>ON Data (Hex, e.g. 0102)</label>
+                <input type="text" id="data-on" placeholder="01" value="01">
+            </div>
+            <div class="input-group">
+                <label>OFF Data (Hex, e.g. 0000)</label>
+                <input type="text" id="data-off" placeholder="00" value="00">
+            </div>
+            <button id="btn-on">ON (Send Data)</button>
+            <button id="btn-off">OFF (Send Data)</button>
         </div>
     </div>
-
     <script>
-        // Nordic UART Service UUIDs
-        // 修正箇所: 正しいUUIDに修正済み
+        // Nordic UART Service UUIDs (All lowercase for Web Bluetooth)
         const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
-        const CHARACTERISTIC_UUID_RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"; // Phone writes to this
-
+        const CHARACTERISTIC_UUID_RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
         let device, server, service, characteristic;
-
-        const btnConnect = document.getElementById('btn-connect');
-        const btnOn = document.getElementById('btn-on');
-        const btnOff = document.getElementById('btn-off');
+        // Elements
         const statusDiv = document.getElementById('status');
         const controlPanel = document.getElementById('control-panel');
-
+        const btnConnect = document.getElementById('btn-connect');
+        const inpId = document.getElementById('can-id');
+        const inpOn = document.getElementById('data-on');
+        const inpOff = document.getElementById('data-off');
+        // Load saved values
+        if (localStorage.getItem('can_id')) inpId.value = localStorage.getItem('can_id');
+        if (localStorage.getItem('can_on')) inpOn.value = localStorage.getItem('can_on');
+        if (localStorage.getItem('can_off')) inpOff.value = localStorage.getItem('can_off');
+        // Save values on change
+        function saveSettings() {
+            localStorage.setItem('can_id', inpId.value);
+            localStorage.setItem('can_on', inpOn.value);
+            localStorage.setItem('can_off', inpOff.value);
+        }
+        inpId.onchange = saveSettings;
+        inpOn.onchange = saveSettings;
+        inpOff.onchange = saveSettings;
         btnConnect.addEventListener('click', connect);
-        btnOn.addEventListener('click', () => sendCommand('on'));
-        btnOff.addEventListener('click', () => sendCommand('off'));
-
+        document.getElementById('btn-on').addEventListener('click', () => sendCanCommand(inpOn.value));
+        document.getElementById('btn-off').addEventListener('click', () => sendCanCommand(inpOff.value));
         async function connect() {
             try {
-                updateStatus('デバイスを探しています...', false);
+                updateStatus('検索中...', false);
                 device = await navigator.bluetooth.requestDevice({
                     filters: [{ namePrefix: 'M5Atom' }],
                     optionalServices: [SERVICE_UUID]
                 });
-
                 device.addEventListener('gattserverdisconnected', onDisconnected);
-
                 updateStatus('接続中...', false);
                 server = await device.gatt.connect();
                 service = await server.getPrimaryService(SERVICE_UUID);
                 characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID_RX);
-
                 updateStatus('接続完了', true);
-                controlPanel.classList.remove('hidden'); // Show controls when connected
-                btnConnect.classList.add('hidden'); // Hide connect button
-                
+                controlPanel.classList.remove('hidden');
+                btnConnect.classList.add('hidden');
             } catch (error) {
                 console.error(error);
-                updateStatus('接続キャンセル/エラー: ' + error, false);
+                updateStatus('エラー: ' + error, false);
             }
         }
-
         function onDisconnected() {
             updateStatus('切断されました', false);
             controlPanel.classList.add('hidden');
             btnConnect.classList.remove('hidden');
         }
-
-        async function sendCommand(cmd) {
+        async function sendCanCommand(dataPayload) {
             if (!characteristic) return;
+            saveSettings();
+            // Format: "CAN:<ID>:<DATA>"
+            const id = inpId.value.trim();
+            const data = dataPayload.trim();
+            const commandString = `CAN:${id}:${data}`;
             try {
                 const encoder = new TextEncoder();
-                await characteristic.writeValue(encoder.encode(cmd));
-                console.log('Sent:', cmd);
+                await characteristic.writeValue(encoder.encode(commandString));
+                console.log('Sent:', commandString);
             } catch (error) {
                 console.error(error);
                 updateStatus('送信エラー', false);
             }
         }
-
         function updateStatus(msg, isConnected) {
             statusDiv.textContent = msg;
             statusDiv.className = 'status ' + (isConnected ? 'connected' : 'disconnected');
@@ -158,5 +216,3 @@
     </script>
 </body>
 </html>
-
-
