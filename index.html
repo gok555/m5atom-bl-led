@@ -1,436 +1,141 @@
-<!-- Version: 3.4 -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>M5Atom CAN Remote (v3.4 Debug)</title>
-    <script>
-        function log(msg) { console.log(msg); }
-        window.onerror = function (msg, url, line) { console.error(msg); return false; };
-        window.startBle = async function () {
-            if (window.isConnecting) return;
-            window.isConnecting = true;
-            if (!navigator.bluetooth) { alert("Web Bluetooth API is not supported."); window.isConnecting = false; return; }
-            try {
-                const statusEl = document.getElementById('status');
-                statusEl.textContent = 'Connecting...';
-                const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
-                const CHARACTERISTIC_UUID_RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
-                const device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'M5Atom' }], optionalServices: [SERVICE_UUID] });
-                device.addEventListener('gattserverdisconnected', onDisc);
-                const server = await device.gatt.connect();
-                const service = await server.getPrimaryService(SERVICE_UUID);
-                window.characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID_RX);
-                statusEl.className = 'status connected';
-                statusEl.textContent = 'Connected';
-                document.getElementById('main-ui').classList.remove('hidden');
-                document.getElementById('connect-container').style.display = 'none';
-            } catch (e) { console.error(e); document.getElementById('status').textContent = 'Conn Cancelled'; }
-            window.isConnecting = false;
-        };
-        function onDisc() {
-            document.getElementById('main-ui').classList.add('hidden');
-            document.getElementById('connect-container').style.display = 'block';
-            document.getElementById('status').className = 'status disconnected';
-            document.getElementById('status').textContent = 'Disconnected';
-        }
-    </script>
-    <link rel="manifest"
-        href="data:application/json;base64,ewogICJuYW1lIjogIk01QXRvbSBDQU4gUmVtb3RlIiwKICAic2hvcnRfbmFtZSI6ICJNNUNBTiIsCiAgInN0YXJ0X3VybCI6ICIuIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjMTIxMjEyIiwKICAidGhlbWVfY29sb3IiOiAiIzEyMTIxMiIsCiAgImljb25zIjogW10KfQ==">
+    <title>M5 Relay Remote</title>
     <style>
         :root {
-            --bg-color: #121212;
-            --card-bg: #1e1e1e;
-            --text-color: #ffffff;
-            --primary-color: #bb86fc;
-            --success-color: #03dac6;
-            --error-color: #cf6679;
-            --on-btn-color: #00e676;
-            --off-btn-color: #ff1744;
-            --input-bg: #ffffff;
-            --input-text: #000000;
+            --primary: #00ff88;
+            --off: #444;
+            --bg: #1a1a1a;
+            --text: #fff;
         }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
             margin: 0;
-            display: flex;
+            overflow: hidden;
+        }
+        h2 { margin-bottom: 20px; font-weight: 300; letter-spacing: 1px; }
+        
+        /* Connect Button */
+        #btn-connect {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border: 2px solid var(--primary);
+            background: transparent;
+            color: var(--primary);
+            border-radius: 50px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        #btn-connect:active { background: var(--primary); color: #000; }
+        /* Relay Toggle Switch */
+        .switch-container {
+            display: none; /* Hidden until connected */
             flex-direction: column;
             align-items: center;
-            min-height: 100vh;
-            padding: 10px;
-            box-sizing: border-box;
         }
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-            width: 100%;
-            max-width: 500px;
-        }
-        .status {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            background: #333;
-            font-size: 0.9rem;
-            color: #aaa;
-            margin-top: 5px;
-        }
-        .tx-stat {
-            display: block;
-            font-size: 0.8rem;
-            color: #888;
-            margin-top: 4px;
-        }
-        .status.connected {
-            color: var(--success-color);
-            border: 1px solid var(--success-color);
-        }
-        .container {
-            width: 100%;
-            max-width: 550px;
-            background: #2d2d2d;
-            padding: 10px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-        }
-        label {
-            font-size: 0.8rem;
-            color: #ccc;
-            display: block;
-            margin-bottom: 3px;
-        }
-        input[type="text"],
-        input[type="number"],
-        select {
-            background: var(--input-bg);
-            color: var(--input-text);
-            border: 1px solid #999;
-            border-radius: 6px;
-            padding: 6px;
-            font-size: 0.9rem;
-            box-sizing: border-box;
-        }
-        button.connect-btn {
-            background: var(--primary-color);
-            color: #000;
-            font-size: 1.1rem;
-            font-weight: bold;
-            padding: 15px;
-            width: 100%;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            transition: transform 0.1s;
-        }
-        button.connect-btn:active {
-            transform: translateY(2px);
-        }
-        .row {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .byte-container {
-            display: flex;
-            gap: 4px;
-            justify-content: space-between;
-            overflow-x: auto;
-            padding-bottom: 5px;
-            margin-bottom: 10px;
-        }
-        .byte-col {
-            flex: 1;
-            min-width: 45px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-        }
-        .byte-col input {
-            width: 100%;
-            text-align: center;
-            font-family: monospace;
-            padding: 4px 0;
-        }
-        .sw-btn {
-            width: 100%;
-            aspect-ratio: 1;
-            border-radius: 8px;
-            border: none;
-            font-size: 0.85rem;
-            font-weight: bold;
-            cursor: pointer;
+        
+        .toggle-btn {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: var(--off);
+            border: 5px solid #333;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
             display: flex;
             align-items: center;
             justify-content: center;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: manipulation;
-        }
-        .sw-btn.on {
-            background-color: var(--on-btn-color);
-            color: #000;
-            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.3);
-        }
-        .sw-btn.off {
-            background-color: #383838;
-            color: #999;
-            border: 1px solid #555;
-            box-shadow: 0 2px 0 #222;
-        }
-        .sw-btn:active {
-            transform: translateY(1px);
-            box-shadow: none;
-        }
-        .mode-sel {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            margin-top: 2px;
-        }
-        .mode-sel input {
-            width: auto;
-            margin: 0;
-        }
-        .mode-sel label {
-            font-size: 0.65rem;
-            color: #aaa;
-            margin: 0;
-            cursor: pointer;
-        }
-        .main-btn {
-            border: none;
-            border-radius: 6px;
-            padding: 10px;
-            font-size: 0.9rem;
+            font-size: 3rem;
             font-weight: bold;
+            color: #888;
             cursor: pointer;
-            color: white;
-            width: 100%;
-            margin-top: 5px;
-            background: #555;
+            transition: 0.3s;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
-        .hidden {
-            display: none;
+        
+        .toggle-btn.on {
+            background: var(--primary);
+            box-shadow: 0 0 50px var(--primary);
+            color: #000;
+            border-color: #fff;
         }
-        .array-config {
-            background: #222;
-            padding: 5px 10px;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .custom-area {
-            margin-top: 15px;
-            border-top: 1px solid #444;
-            padding-top: 10px;
-        }
+        .status { margin-top: 30px; color: #888; font-size: 0.9rem; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h2 style="margin:5px 0; color:var(--primary-color);">M5Atom CAN Remote (v3.4 Debug)</h2>
-        <div id="status" class="status disconnected">Disconnected</div>
-        <div class="tx-stat">App Tx Count: <span id="tx-count">0</span></div>
-    </div>
-    <div id="connect-container" style="width:100%; max-width:500px;">
-        <button id="btn-connect" class="connect-btn" onclick="startBle()">CONNECT DEVICE</button>
-    </div>
-    <div id="main-ui" class="container hidden">
-        <div class="row">
-            <div style="flex:0 0 80px;"><label>ID (Hex)</label><input type="text" id="can-id" value="500"></div>
-            <div style="flex:1;"></div>
-            <div style="text-align:right;">
-                <label>Switch Target Bit</label>
-                <div class="array-config"><label style="margin:0 5px 0 0; color:#fff;">Bit:</label><select
-                        id="global-bit">
-                        <option value="0">0</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5</option>
-                        <option value="6">6</option>
-                        <option value="7">7</option>
-                    </select></div>
-            </div>
-        </div>
-        <div style="font-size:0.8rem; color:#ccc; margin-bottom:5px;">Data & Switches (Toggle / Momentary)</div>
-        <div class="byte-container" id="byte-cols"></div>
-        <button id="btn-send-manual" class="main-btn">Send Current Data (Manual)</button>
-        <div class="custom-area">
-            <div style="font-size:0.8rem; color:#888;">Advanced: Individual Toggle</div>
-            <div class="row" style="margin-bottom:5px;">
-                <div style="flex:1;"><label>Byte</label><select id="adv-byte">
-                        <option value="0">0</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5</option>
-                        <option value="6">6</option>
-                        <option value="7">7</option>
-                    </select></div>
-                <div style="flex:1;"><label>Bit</label><select id="adv-bit">
-                        <option value="0">0</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5</option>
-                        <option value="6">6</option>
-                        <option value="7">7</option>
-                    </select></div>
-            </div>
-            <div style="display:flex; gap:10px;"><button id="btn-on-custom" class="main-btn"
-                    style="background:#00e676; color:black;">ON</button><button id="btn-off-custom" class="main-btn"
-                    style="background:#ff1744;">OFF</button></div>
-        </div>
+    <h2>M5 Relay Remote</h2>
+    <button id="btn-connect" onclick="startBle()">CONNECT</button>
+    <div id="ui-layer" class="switch-container">
+        <div id="btn-relay" class="toggle-btn" onclick="toggleRelay()">OFF</div>
+        <div class="status">Tap to Toggle</div>
     </div>
     <script>
-        const els = {
-            id: document.getElementById('can-id'),
-            gBit: document.getElementById('global-bit'),
-            advByte: document.getElementById('adv-byte'), advBit: document.getElementById('adv-bit'),
-        };
-        // Init UI
-        try {
-            const byteCols = document.getElementById('byte-cols');
-            for (let i = 0; i < 8; i++) {
-                let col = document.createElement('div');
-                col.className = 'byte-col';
-                col.innerHTML = `
-                    <input type="number" id="b${i}" value="0" min="0" max="255">
-                    <button id="sw${i}" class="sw-btn off">OFF</button>
-                    <div class="mode-sel"><input type="checkbox" id="m${i}"><label for="m${i}">Mom.</label></div>
-                    <span style="font-size:0.6rem; color:#666;">B${i}</span>
-                `;
-                byteCols.appendChild(col);
-                // Attach Events
-                let btn = document.getElementById('sw' + i);
-                ['mousedown', 'mouseup', 'touchstart', 'touchend', 'click', 'mouseleave'].forEach(evt => {
-                    btn.addEventListener(evt, (e) => handleSwitch(e, i));
+        // --- CONFIG ---
+        const S_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+        const TX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"; // We WRITE to this (RX on Device)
+        let device, server, service, characteristic;
+        let isRelayOn = false;
+        async function startBle() {
+            try {
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [{ namePrefix: "M5" }],
+                    optionalServices: [S_UUID]
                 });
-                document.getElementById('b' + i).addEventListener('input', updateSwitches);
-                document.getElementById('m' + i).addEventListener('change', save);
+                
+                device.addEventListener('gattserverdisconnected', onDisconnected);
+                
+                server = await device.gatt.connect();
+                service = await server.getPrimaryService(S_UUID);
+                characteristic = await service.getCharacteristic(TX_UUID);
+                // UI Update
+                document.getElementById('btn-connect').style.display = 'none';
+                document.getElementById('ui-layer').style.display = 'flex';
+                
+            } catch (e) {
+                alert("Connection Failed: " + e);
             }
-        } catch (e) { }
-        function getMask() { return (1 << parseInt(els.gBit.value)); }
-        function handleSwitch(e, idx) {
-            const isMom = document.getElementById('m' + idx).checked;
-            const input = document.getElementById('b' + idx);
-            let val = parseInt(input.value) || 0;
-            const mask = getMask();
-            const btn = document.getElementById('sw' + idx);
-            if (!isMom) {
-                // TOGGLE MODE
-                if (e.type === 'click') {
-                    if ((val & mask) !== 0) val &= ~mask; else val |= mask;
-                    input.value = val;
-                    updateVisuals(idx);
-                    requestUpdate();
-                }
+        }
+        function onDisconnected() {
+            document.getElementById('btn-connect').style.display = 'block';
+            document.getElementById('ui-layer').style.display = 'none';
+            document.getElementById('btn-relay').className = 'toggle-btn';
+            document.getElementById('btn-relay').innerText = 'OFF';
+            isRelayOn = false;
+        }
+        async function toggleRelay() {
+            if (!characteristic) return;
+            isRelayOn = !isRelayOn;
+            updateUI();
+            // Protocol: [Byte 0 = 1 for ON, 0 for OFF] + 9 zeroes
+            let data = new Uint8Array(10);
+            data[0] = isRelayOn ? 1 : 0;
+            
+            try {
+                await characteristic.writeValue(data);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+        function updateUI() {
+            const btn = document.getElementById('btn-relay');
+            if (isRelayOn) {
+                btn.className = 'toggle-btn on';
+                btn.innerText = 'ON';
             } else {
-                // MOMENTARY MODE
-                if (e.type === 'click') return; // Ignore click in momentary to prevent double firing
-                if (e.cancelable && e.type.startsWith('touch')) e.preventDefault(); // Prevent scroll/zoom/click emulation
-                let newVal = val;
-                if (e.type === 'mousedown' || e.type === 'touchstart') {
-                    newVal |= mask; // Press -> ON
-                } else if (e.type === 'mouseup' || e.type === 'touchend' || e.type === 'mouseleave') {
-                    newVal &= ~mask; // Release -> OFF
-                }
-                if (newVal !== val) {
-                    input.value = newVal;
-                    updateVisuals(idx);
-                    requestUpdate();
-                }
+                btn.className = 'toggle-btn';
+                btn.innerText = 'OFF';
             }
-        }
-        function updateVisuals(idx) {
-            // Only updates the button valid, does not save/scan all
-            // But for consistency we call updateSwitches() which does all
-            updateSwitches();
-        }
-        function updateSwitches() {
-            try {
-                let mask = getMask();
-                for (let i = 0; i < 8; i++) {
-                    let val = parseInt(document.getElementById('b' + i).value) || 0;
-                    let btn = document.getElementById('sw' + i);
-                    if ((val & mask) !== 0) { btn.className = 'sw-btn on'; btn.textContent = 'ON'; }
-                    else { btn.className = 'sw-btn off'; btn.textContent = 'OFF'; }
-                }
-                save();
-            } catch (e) { }
-        }
-        function save() {
-            try {
-                localStorage.setItem('c11_id', els.id.value);
-                localStorage.setItem('c11_gbit', els.gBit.value);
-                for (let i = 0; i < 8; i++) {
-                    localStorage.setItem('c11_b' + i, document.getElementById('b' + i).value);
-                    localStorage.setItem('c11_m' + i, document.getElementById('m' + i).checked);
-                }
-            } catch (e) { }
-        }
-        function load() {
-            try {
-                if (localStorage.getItem('c11_id')) els.id.value = localStorage.getItem('c11_id');
-                if (localStorage.getItem('c11_gbit')) els.gBit.value = localStorage.getItem('c11_gbit');
-                for (let i = 0; i < 8; i++) {
-                    if (localStorage.getItem('c11_b' + i)) document.getElementById('b' + i).value = localStorage.getItem('c11_b' + i);
-                    if (localStorage.getItem('c11_m' + i) === 'true') document.getElementById('m' + i).checked = true;
-                }
-                updateSwitches();
-            } catch (e) { }
-        }
-        let isDirty = false;
-        let txCount = 0;
-        function requestUpdate() { isDirty = true; }
-        setInterval(() => {
-            if (isDirty && window.characteristic) {
-                sendManual();
-                isDirty = false;
-                txCount++;
-                document.getElementById('tx-count').textContent = txCount;
-            }
-        }, 100); // 10Hz
-        try {
-            els.gBit.addEventListener('change', updateSwitches);
-            document.getElementById('btn-send-manual').addEventListener('click', () => requestUpdate());
-            document.getElementById('btn-on-custom').addEventListener('click', () => sendAdv(true));
-            document.getElementById('btn-off-custom').addEventListener('click', () => sendAdv(false));
-            load();
-        } catch (e) { }
-        async function sendManual(idx = 8) {
-            if (!window.characteristic) return;
-            // Binary Protocol: [ID_HI, ID_LO, D0, D1, D2, D3, D4, D5, D6, D7]
-            let buf = new Uint8Array(10);
-            let id = parseInt(els.id.value) || 0;
-            buf[0] = (id >> 8) & 0xFF;
-            buf[1] = id & 0xFF;
-            for (let i = 0; i < 8; i++) {
-                let v = parseInt(document.getElementById('b' + i).value) || 0;
-                buf[2 + i] = v;
-            }
-            try { await window.characteristic.writeValue(buf); } catch (e) { console.log(e); }
-        }
-        async function sendAdv(isOn) {
-            let tB = parseInt(els.advByte.value);
-            let tBit = parseInt(els.advBit.value);
-            let mask = (1 << tBit);
-            let input = document.getElementById('b' + tB);
-            let val = parseInt(input.value) || 0;
-            if (isOn) val |= mask; else val &= ~mask;
-            input.value = val;
-            updateSwitches();
-            sendManual(tB);
         }
     </script>
 </body>
