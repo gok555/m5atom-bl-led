@@ -1,10 +1,10 @@
-<!-- Version: 3.2 -->
+<!-- Version: 3.3 -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>M5Atom CAN Remote (v3.2 500k)</title>
+    <title>M5Atom CAN Remote (v3.3 10Hz)</title>
     <script>
         function log(msg) { console.log(msg); }
         window.onerror = function (msg, url, line) { console.error(msg); return false; };
@@ -326,7 +326,7 @@
                     if ((val & mask) !== 0) val &= ~mask; else val |= mask;
                     input.value = val;
                     updateVisuals(idx);
-                    sendManual(idx);
+                    requestUpdate();
                 }
             } else {
                 // MOMENTARY MODE
@@ -341,7 +341,7 @@
                 if (newVal !== val) {
                     input.value = newVal;
                     updateVisuals(idx);
-                    sendManual(idx);
+                    requestUpdate();
                 }
             }
         }
@@ -383,9 +383,17 @@
                 updateSwitches();
             } catch (e) { }
         }
+        let isDirty = false;
+        function requestUpdate() { isDirty = true; }
+        setInterval(() => {
+            if (isDirty && window.characteristic) {
+                sendManual();
+                isDirty = false;
+            }
+        }, 100); // 10Hz
         try {
             els.gBit.addEventListener('change', updateSwitches);
-            document.getElementById('btn-send-manual').addEventListener('click', () => sendManual(8));
+            document.getElementById('btn-send-manual').addEventListener('click', () => requestUpdate());
             document.getElementById('btn-on-custom').addEventListener('click', () => sendAdv(true));
             document.getElementById('btn-off-custom').addEventListener('click', () => sendAdv(false));
             load();
