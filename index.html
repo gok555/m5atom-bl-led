@@ -1,157 +1,115 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>M5AtomS3 CAN Controller</title>
-    <style>
-        :root {
-            --primary: #007bff;
-            --bg: #f4f4f4;
-            --text: #333;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background: var(--bg);
-            color: var(--text);
-            text-align: center;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        h1 { margin-bottom: 20px; font-size: 1.5rem; }
-        button {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            font-size: 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            width: 100%;
-            margin-bottom: 10px;
-            transition: opacity 0.2s;
-        }
-        button:disabled { background: #ccc; cursor: not-allowed; }
-        button:active { opacity: 0.8; }
-        input[type="text"] {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 10px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            box-sizing: border-box;
-            font-size: 1rem;
-        }
-        #log {
-            margin-top: 20px;
-            text-align: left;
-            background: #eee;
-            padding: 10px;
-            border-radius: 8px;
-            height: 200px;
-            overflow-y: auto;
-            font-family: monospace;
-            font-size: 0.9rem;
-        }
-        .status {
-            margin-bottom: 15px;
-            font-weight: bold;
-            color: #666;
-        }
-        .connected { color: #28a745; }
-    </style>
+<meta charset="utf-8">
+<title>M5Atom S3 CAN Test Pad</title>
+
+<style>
+body {
+    font-family: Arial;
+    text-align: center;
+    background: #111;
+    color: #eee;
+}
+button {
+    width: 120px;
+    height: 70px;
+    margin: 10px;
+    font-size: 24px;
+    border-radius: 10px;
+}
+#connect {
+    background: #4CAF50;
+    color: white;
+    width: 200px;
+    height: 60px;
+    font-size: 22px;
+}
+.pad {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    width: 270px;
+    margin: 20px auto;
+}
+</style>
 </head>
+
 <body>
-    <div class="container">
-        <h1>M5AtomS3 CAN Controller</h1>
-        
-        <div class="status" id="status">Status: Disconnected</div>
-        
-        <button id="connectBtn">Connect to M5AtomS3</button>
-        
-        <div id="controls" style="display:none;">
-            <input type="text" id="cmdInput" placeholder="Enter message (e.g. TEST)" value="TEST">
-            <button id="sendBtn">Send Message</button>
-            <div style="display: flex; gap: 10px;">
-                <button onclick="sendPreset('A')">Send 'A'</button>
-                <button onclick="sendPreset('B')">Send 'B'</button>
-            </div>
-        </div>
-        <div id="log"></div>
-    </div>
-    <script>
-        const DEVICE_NAME = "M5AtomS3_CAN";
-        const SERVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E".toLowerCase();
-        const RX_CHAR_UUID = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E".toLowerCase(); // Phone -> Device
-        const TX_CHAR_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E".toLowerCase(); // Device -> Phone
-        let bluetoothDevice;
-        let rxCharacteristic;
-        const connectBtn = document.getElementById('connectBtn');
-        const sendBtn = document.getElementById('sendBtn');
-        const controls = document.getElementById('controls');
-        const statusEl = document.getElementById('status');
-        const logEl = document.getElementById('log');
-        function log(msg) {
-            const time = new Date().toLocaleTimeString();
-            logEl.innerHTML += `<div>[${time}] ${msg}</div>`;
-            logEl.scrollTop = logEl.scrollHeight;
-        }
-        connectBtn.addEventListener('click', async () => {
-            try {
-                log('Requesting Bluetooth Device...');
-                bluetoothDevice = await navigator.bluetooth.requestDevice({
-                    filters: [{ name: DEVICE_NAME }],
-                    optionalServices: [SERVICE_UUID]
-                });
-                bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
-                log('Connecting to GATT Server...');
-                const server = await bluetoothDevice.gatt.connect();
-                log('Getting Service...');
-                const service = await server.getPrimaryService(SERVICE_UUID);
-                log('Getting Characteristics...');
-                rxCharacteristic = await service.getCharacteristic(RX_CHAR_UUID);
-                // TX characteristic for receiving not implemented in this minimal example but can be added
-                log('Connected!');
-                statusEl.textContent = 'Status: Connected';
-                statusEl.classList.add('connected');
-                connectBtn.style.display = 'none';
-                controls.style.display = 'block';
-            } catch (error) {
-                log('Argh! ' + error);
-            }
+<h2>M5AtomS3 CAN TEST</h2>
+
+<button id="connect">Connect</button>
+
+<div class="pad">
+    <button class="key" data-id="0">KEY 0</button>
+    <button class="key" data-id="1">KEY 1</button>
+    <button class="key" data-id="2">KEY 2</button>
+    <button class="key" data-id="3">KEY 3</button>
+    <button class="key" data-id="4">KEY 4</button>
+    <button class="key" data-id="5">KEY 5</button>
+    <button class="key" data-id="6">KEY 6</button>
+    <button class="key" data-id="7">KEY 7</button>
+</div>
+
+<script>
+// Nordic UART Service
+const NUS_SERVICE_UUID  = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+const NUS_TX_CHAR_UUID  = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+const NUS_RX_CHAR_UUID  = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+
+let device = null;
+let rxCharacteristic = null;
+
+// ----------------------------
+// Connect
+// ----------------------------
+document.getElementById("connect").onclick = async () => {
+    try {
+        device = await navigator.bluetooth.requestDevice({
+            filters: [{ namePrefix: "M5AtomS3" }],
+            optionalServices: [NUS_SERVICE_UUID]
         });
-        function onDisconnected(event) {
-            log('Disconnected');
-            statusEl.textContent = 'Status: Disconnected';
-            statusEl.classList.remove('connected');
-            connectBtn.style.display = 'block';
-            controls.style.display = 'none';
-        }
-        async function sendData(text) {
-            if (!rxCharacteristic) return;
-            try {
-                const encoder = new TextEncoder();
-                await rxCharacteristic.writeValue(encoder.encode(text));
-                log(`Sent: ${text}`);
-            } catch (error) {
-                log('Send Failed: ' + error);
-            }
-        }
-        sendBtn.addEventListener('click', () => {
-            const text = document.getElementById('cmdInput').value;
-            sendData(text);
-        });
-        window.sendPreset = (text) => {
-            sendData(text);
-        };
-    </script>
+
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService(NUS_SERVICE_UUID);
+
+        rxCharacteristic = await service.getCharacteristic(NUS_RX_CHAR_UUID);
+
+        alert("Connected!");
+    } catch (e) {
+        alert("Connect error: " + e);
+    }
+};
+
+
+// ----------------------------
+// Send BLE Command
+// ----------------------------
+async function sendBLE(cmd) {
+    if (!rxCharacteristic) return;
+    try {
+        await rxCharacteristic.writeValue(new TextEncoder().encode(cmd));
+        console.log("BLE TX:", cmd);
+    } catch (e) {
+        console.log("BLE error:", e);
+    }
+}
+
+// ----------------------------
+// Handle Press / Release
+// ----------------------------
+document.querySelectorAll(".key").forEach(btn => {
+    const id = btn.dataset.id;
+
+    btn.addEventListener("touchstart", () => sendBLE("D" + id));
+    btn.addEventListener("mousedown", () => sendBLE("D" + id));
+
+    btn.addEventListener("touchend", () => sendBLE("U" + id));
+    btn.addEventListener("mouseup", () => sendBLE("U" + id));
+
+    btn.addEventListener("mouseleave", () => sendBLE("U" + id));
+});
+</script>
+
 </body>
 </html>
