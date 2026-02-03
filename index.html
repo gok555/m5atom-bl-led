@@ -17,29 +17,40 @@ const RX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
 
 let rxChar;
 
-function log(t){ document.getElementById("log").textContent += t+"\n"; }
+function log(t){
+  document.getElementById("log").textContent += t+"\n";
+}
 
 async function connect(){
-  const dev = await navigator.bluetooth.requestDevice({
-    filters:[{services:[SERVICE_UUID]}]
-  });
-  const gatt = await dev.gatt.connect();
-  const svc = await gatt.getPrimaryService(SERVICE_UUID);
-  rxChar = await svc.getCharacteristic(RX_UUID);
-  log("BLE connected");
+  try {
+    const dev = await navigator.bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: [SERVICE_UUID]
+    });
+
+    const gatt = await dev.gatt.connect();
+    const svc  = await gatt.getPrimaryService(SERVICE_UUID);
+    rxChar     = await svc.getCharacteristic(RX_UUID);
+
+    log("BLE connected");
+  } catch (e) {
+    log("BLE ERROR: " + e);
+  }
 }
 
 function send(n){
+  if (!rxChar) return;
   rxChar.writeValue(new TextEncoder().encode(String(n)));
-  log("SEND BTN"+n);
+  log("SEND BTN" + n);
 }
 
-for(let i=1;i<=8;i++){
-  const b=document.createElement("button");
-  b.textContent="BTN"+i;
-  b.onclick=()=>send(i);
+for (let i = 1; i <= 8; i++) {
+  const b = document.createElement("button");
+  b.textContent = "BTN" + i;
+  b.onclick = () => send(i);
   document.getElementById("btns").appendChild(b);
 }
 </script>
+
 </body>
 </html>
