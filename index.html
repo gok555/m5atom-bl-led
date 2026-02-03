@@ -1,3 +1,4 @@
+<!-- Version: v1.1 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -17,10 +18,22 @@
             padding: 20px;
             box-sizing: border-box;
         }
-        h1 {
+        .header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             margin-bottom: 20px;
+            width: 100%;
+        }
+        h1 {
+            margin: 0;
             font-size: 1.5rem;
             text-align: center;
+        }
+        .version {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 5px;
         }
         .controls {
             width: 100%;
@@ -29,6 +42,7 @@
             justify-content: space-between;
             margin-bottom: 20px;
             gap: 10px;
+            transition: max-width 0.3s;
         }
         #connect-btn {
             flex: 2;
@@ -59,6 +73,7 @@
             gap: 15px;
             width: 100%;
             max-width: 320px;
+            transition: max-width 0.3s;
         }
         .key-btn {
             aspect-ratio: 1;
@@ -84,7 +99,6 @@
             transform: scale(0.98);
             box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
         }
-        /* Edit mode styles */
         .editing .key-btn {
             border-color: #f39c12;
             background: #444;
@@ -126,11 +140,26 @@
             border-radius: 8px;
             border: 1px solid #444;
             box-sizing: border-box;
+            transition: max-width 0.3s;
+        }
+        /* Landscape / Wide screen adjustment */
+        @media (min-width: 500px) and (orientation: landscape) {
+            .controls,
+            #keypad,
+            #log {
+                max-width: 600px;
+            }
+            #keypad {
+                grid-template-columns: repeat(4, 1fr);
+            }
         }
     </style>
 </head>
 <body>
-    <h1>CAN Keypad</h1>
+    <div class="header">
+        <h1>CAN Keypad</h1>
+        <div class="version">Ver 1.1</div>
+    </div>
     <div class="controls">
         <button id="connect-btn" onclick="connect()">🔵 Connect BLE</button>
         <button id="edit-mode-btn" onclick="toggleEditMode()">✏️ Edit Names</button>
@@ -142,7 +171,6 @@
         const RX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
         let rxChar;
         let isEditMode = false;
-        // Initialize labels from localStorage or defaults
         let btnLabels = JSON.parse(localStorage.getItem("btnLabels")) ||
             Array.from({ length: 8 }, (_, i) => `BTN ${i + 1}`);
         function log(t) {
@@ -167,7 +195,7 @@
             }
         }
         function send(n) {
-            if (isEditMode) return; // Don't send in edit mode
+            if (isEditMode) return;
             if (!rxChar) return;
             rxChar.writeValue(new TextEncoder().encode(String(n)));
             const btn = document.getElementById('btn-' + n);
@@ -189,7 +217,6 @@
                 editBtn.style.background = "#28a745";
                 editBtn.style.color = "white";
             } else {
-                // Save changes
                 const inputs = document.querySelectorAll(".key-btn input");
                 inputs.forEach((input, i) => {
                     btnLabels[i] = input.value;
@@ -205,11 +232,10 @@
         }
         const container = document.getElementById("keypad");
         for (let i = 1; i <= 8; i++) {
-            const b = document.createElement("div"); // Use div instead of button for better input handling
+            const b = document.createElement("div");
             b.id = `btn-${i}`;
             b.className = "key-btn";
             b.onclick = (e) => {
-                // Only trigger send if not clicking the input
                 if (e.target.tagName !== 'INPUT') send(i);
             };
             b.innerHTML = `
