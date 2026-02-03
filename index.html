@@ -22,18 +22,35 @@
             font-size: 1.5rem;
             text-align: center;
         }
+        .controls {
+            width: 100%;
+            max-width: 320px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
         #connect-btn {
+            flex: 2;
             background: #007bff;
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 12px;
             font-size: 1rem;
             border-radius: 8px;
             cursor: pointer;
-            margin-bottom: 20px;
-            width: 100%;
-            max-width: 320px;
             font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        #edit-mode-btn {
+            flex: 1;
+            background: #555;
+            color: #ddd;
+            border: none;
+            padding: 12px;
+            font-size: 0.9rem;
+            border-radius: 8px;
+            cursor: pointer;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
         }
         #keypad {
@@ -49,7 +66,7 @@
             border: 2px solid #555;
             border-radius: 12px;
             color: white;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.1s;
@@ -58,13 +75,38 @@
             align-items: center;
             flex-direction: column;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            position: relative;
+            padding: 5px;
+            text-align: center;
         }
         .key-btn:active {
             background: #555;
             transform: scale(0.98);
             box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
         }
-        .key-btn span {
+        /* Edit mode styles */
+        .editing .key-btn {
+            border-color: #f39c12;
+            background: #444;
+        }
+        .key-btn input {
+            display: none;
+            width: 90%;
+            background: #222;
+            border: 1px solid #777;
+            color: white;
+            text-align: center;
+            font-size: 1rem;
+            padding: 4px;
+            border-radius: 4px;
+        }
+        .editing .key-btn input {
+            display: block;
+        }
+        .editing .key-btn .btn-label {
+            display: none;
+        }
+        .key-btn span.sub {
             font-size: 0.7rem;
             color: #bbb;
             margin-top: 8px;
@@ -89,16 +131,22 @@
 </head>
 <body>
     <h1>CAN Keypad</h1>
-    <button id="connect-btn" onclick="connect()">🔵 Connect BLE</button>
+    <div class="controls">
+        <button id="connect-btn" onclick="connect()">🔵 Connect BLE</button>
+        <button id="edit-mode-btn" onclick="toggleEditMode()">✏️ Edit Names</button>
+    </div>
     <div id="keypad"></div>
     <pre id="log">Logs will appear here...</pre>
     <script>
         const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
         const RX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
         let rxChar;
+        let isEditMode = false;
+        // Initialize labels from localStorage or defaults
+        let btnLabels = JSON.parse(localStorage.getItem("btnLabels")) ||
+            Array.from({ length: 8 }, (_, i) => `BTN ${i + 1}`);
         function log(t) {
             const el = document.getElementById("log");
-            // 新しいログを上に追加するスタイルに変更
             const time = new Date().toLocaleTimeString().split(' ')[0];
             el.textContent = `[${time}] ${t}\n` + el.textContent.substring(0, 1000);
         }
@@ -119,25 +167,56 @@
             }
         }
         function send(n) {
+            if (isEditMode) return; // Don't send in edit mode
             if (!rxChar) return;
             rxChar.writeValue(new TextEncoder().encode(String(n)));
-            // 送信したボタンを視覚的にフィードバック
-            const btn = document.querySelectorAll('.key-btn')[n - 1];
-            const origColor = btn.style.borderColor;
+            const btn = document.getElementById('btn-' + n);
             btn.style.borderColor = '#00ff00';
             btn.style.color = '#00ff00';
             setTimeout(() => {
-                btn.style.borderColor = "#555";
+                btn.style.borderColor = isEditMode ? "#f39c12" : "#555";
                 btn.style.color = "white";
             }, 200);
-            log("Tx: BTN " + n);
+            log(`Tx: Byte ${n - 1} (${btnLabels[n - 1]})`);
+        }
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            const container = document.getElementById("keypad");
+            const editBtn = document.getElementById("edit-mode-btn");
+            if (isEditMode) {
+                container.classList.add("editing");
+                editBtn.textContent = "💾 Save Names";
+                editBtn.style.background = "#28a745";
+                editBtn.style.color = "white";
+            } else {
+                // Save changes
+                const inputs = document.querySelectorAll(".key-btn input");
+                inputs.forEach((input, i) => {
+                    btnLabels[i] = input.value;
+                    const labelSpan = document.getElementById(`label-${i + 1}`);
+                    labelSpan.textContent = input.value;
+                });
+                localStorage.setItem("btnLabels", JSON.stringify(btnLabels));
+                container.classList.remove("editing");
+                editBtn.textContent = "✏️ Edit Names";
+                editBtn.style.background = "#555";
+                editBtn.style.color = "#ddd";
+            }
         }
         const container = document.getElementById("keypad");
         for (let i = 1; i <= 8; i++) {
-            const b = document.createElement("button");
+            const b = document.createElement("div"); // Use div instead of button for better input handling
+            b.id = `btn-${i}`;
             b.className = "key-btn";
-            b.innerHTML = `BTN ${i}<span>Byte ${i - 1}</span>`;
-            b.onclick = () => send(i);
+            b.onclick = (e) => {
+                // Only trigger send if not clicking the input
+                if (e.target.tagName !== 'INPUT') send(i);
+            };
+            b.innerHTML = `
+    <span id="label-${i}" class="btn-label">${btnLabels[i - 1]}</span>
+    <input type="text" value="${btnLabels[i - 1]}" maxlength="8" onclick="event.stopPropagation()">
+    <span class="sub">Byte ${i - 1}</span>
+  `;
             container.appendChild(b);
         }
     </script>
