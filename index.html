@@ -1,95 +1,45 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>M5AtomS3 CAN Remote</title>
-<style>
-  body { font-family: sans-serif; padding: 20px; }
-  button { margin: 5px; padding: 15px; font-size: 20px; }
-  #log { margin-top: 20px; white-space: pre-line; }
-</style>
+<meta charset="utf-8">
+<title>M5Atom CAN Keypad</title>
 </head>
 <body>
 
-<h2>🔵 BLE接続</h2>
-<button id="btnConnect">BLE接続する</button>
+<button onclick="connect()">🔵 BLE接続</button><br><br>
 
-<h3>CAN 8ボタン</h3>
-<div>
-  <button class="txbtn" data-id="1">BTN1</button>
-  <button class="txbtn" data-id="2">BTN2</button>
-  <button class="txbtn" data-id="3">BTN3</button>
-  <button class="txbtn" data-id="4">BTN4</button>
-  <button class="txbtn" data-id="5">BTN5</button>
-  <button class="txbtn" data-id="6">BTN6</button>
-  <button class="txbtn" data-id="7">BTN7</button>
-  <button class="txbtn" data-id="8">BTN8</button>
-</div>
-
-<h3>ログ</h3>
-<div id="log">🔺BLE未接続</div>
+<div id="btns"></div>
+<pre id="log"></pre>
 
 <script>
-const UART_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
-const UART_TX      = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
-const UART_RX      = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+const RX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
 
-let device, server, service;
-let txChar, rxChar;
+let rxChar;
 
-function log(msg) {
-  document.getElementById("log").textContent += "\n" + msg;
-  console.log(msg);
+function log(t){ document.getElementById("log").textContent += t+"\n"; }
+
+async function connect(){
+  const dev = await navigator.bluetooth.requestDevice({
+    filters:[{services:[SERVICE_UUID]}]
+  });
+  const gatt = await dev.gatt.connect();
+  const svc = await gatt.getPrimaryService(SERVICE_UUID);
+  rxChar = await svc.getCharacteristic(RX_UUID);
+  log("BLE connected");
 }
 
-document.getElementById("btnConnect").onclick = async () => {
-  try {
-    log("🔍 デバイス検索中...");
+function send(n){
+  rxChar.writeValue(new TextEncoder().encode(String(n)));
+  log("SEND BTN"+n);
+}
 
-    device = await navigator.bluetooth.requestDevice({
-      filters: [{ services: [UART_SERVICE] }]
-    });
-
-    log("🔗 接続中: " + device.name);
-    device.addEventListener("gattserverdisconnected", () => {
-      log("⚠️ BLE切断されました");
-    });
-
-    server = await device.gatt.connect();
-    service = await server.getPrimaryService(UART_SERVICE);
-
-    txChar = await service.getCharacteristic(UART_TX);
-    rxChar = await service.getCharacteristic(UART_RX);
-
-    await txChar.startNotifications();
-    txChar.addEventListener("characteristicvaluechanged", evt => {
-      let value = new TextDecoder().decode(evt.target.value);
-      log("📥 RX: " + value);
-    });
-
-    log("✅ BLE接続成功！");
-  } catch (e) {
-    log("❌ BLEエラー: " + e);
-  }
-};
-
-// ===== ボタン送信 =====
-document.querySelectorAll(".txbtn").forEach(btn => {
-  btn.addEventListener("click", async () => {
-    if (!rxChar) {
-      log("⚠️ BLE未接続");
-      return;
-    }
-    let id = btn.dataset.id;
-    try {
-      await rxChar.writeValue(new TextEncoder().encode(id));
-      log("📤 TX: BTN" + id);
-    } catch (e) {
-      log("❌ 送信エラー: " + e);
-    }
-  });
-});
+for(let i=1;i<=8;i++){
+  const b=document.createElement("button");
+  b.textContent="BTN"+i;
+  b.onclick=()=>send(i);
+  document.getElementById("btns").appendChild(b);
+}
 </script>
-
 </body>
 </html>
