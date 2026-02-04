@@ -1,4 +1,4 @@
-<!-- Version: v1.9 (Pulse Logic) -->
+<!-- Version: v2.0 (Per-Button Config) -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -233,32 +233,53 @@
       padding: 10px 15px;
       white-space: nowrap;
     }
-    /* Mode Switcher */
-    .mode-switch {
-      background: #333;
-      border-radius: 8px;
-      padding: 5px;
+    /* Scrollable Config List */
+    .config-list {
       display: flex;
-      gap: 5px;
-    }
-    .mode-btn {
-      flex: 1;
-      background: none;
-      border: none;
-      color: #888;
+      flex-direction: column;
+      gap: 10px;
+      background: #2a2a2a;
       padding: 10px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: bold;
-      transition: all 0.2s;
+      border-radius: 8px;
     }
-    .mode-btn.selected {
+    /* Individual Button Config Row */
+    .config-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #333;
+      padding: 5px 10px;
+      border-radius: 6px;
+    }
+    .config-label {
+      font-size: 0.9rem;
+      font-weight: bold;
+      color: #eee;
+    }
+    /* Mini Segmented Control */
+    .mini-switch {
+      display: flex;
+      background: #222;
+      border-radius: 4px;
+      padding: 2px;
+      gap: 2px;
+    }
+    .mini-opt {
+      border: none;
+      background: none;
+      color: #666;
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .mini-opt.selected {
       background: #555;
-      color: white;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      color: #fff;
+      font-weight: bold;
     }
     #log {
-      margin-top: auto;
+      margin-top: 20px;
       width: 100%;
       height: 100px;
       min-height: 100px;
@@ -332,16 +353,11 @@
           <button id="set-id-btn" class="action-btn btn-orange" onclick="setCanId()">SET</button>
         </div>
       </div>
-      <!-- Operation Mode -->
+      <!-- Button Configurations -->
       <div class="control-row" style="margin-top: 10px;">
-        <div style="color: #ccc; font-size: 0.9rem; margin-bottom: 5px; margin-left: 5px;">Button Mode</div>
-        <div class="mode-switch">
-          <button id="mode-toggle" class="mode-btn selected" onclick="setMode('toggle')">Toggle</button>
-          <button id="mode-momentary" class="mode-btn" onclick="setMode('momentary')">Momentary (Pulse)</button>
-        </div>
-        <div style="color: #666; font-size: 0.7rem; margin-top: 3px; margin-left: 5px;">
-          Toggle: Click to Switch ON/OFF<br>
-          Pulse: Tap to Pulse (ON -> 150ms -> OFF)
+        <div style="color: #ccc; font-size: 0.9rem; margin-bottom: 5px; margin-left: 5px;">Button Configuration</div>
+        <div id="config-list-container" class="config-list">
+          <!-- Populated by JS -->
         </div>
       </div>
       <!-- Fullscreen -->
@@ -349,7 +365,7 @@
         <button class="action-btn btn-gray" onclick="toggleFullscreen()">⛶ Toggle Fullscreen</button>
       </div>
       <div style="color: #666; font-size: 0.8rem; text-align: center; margin-top: 10px;">
-        Ver 1.9 (Pulse Logic)<br>
+        Ver 2.0 (Individual Config)<br>
         M5Atom S3 CAN
       </div>
     </div>
@@ -361,27 +377,39 @@
     const TX_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
     let rxChar;
     let isEditMode = false;
-    let isMomentary = false; // Default Toggle (Pulse Mode)
+    // Data Storage
     let btnLabels = JSON.parse(localStorage.getItem("btnLabels")) ||
       Array.from({ length: 8 }, (_, i) => `BTN ${i + 1}`);
+    // New: Per-button mode. 'toggle' or 'momentary'. Default 'toggle'.
+    let btnModes = JSON.parse(localStorage.getItem("btnModes")) ||
+      Array(8).fill('toggle');
     let btnStates = Array(8).fill(false);
     let isConnected = false;
     // --- Pulse Logic Variables ---
-    let isPulsing = false; // Flag to ignore sync during pulse
-    let lastPulseTime = 0; // Timestamp
-    /* --- Mode Logic --- */
-    function setMode(mode) {
-      if (mode === 'momentary') {
-        isMomentary = true;
-        document.getElementById('mode-momentary').classList.add('selected');
-        document.getElementById('mode-toggle').classList.remove('selected');
-        log("Mode: Pulse (Momentary)");
-      } else {
-        isMomentary = false;
-        document.getElementById('mode-toggle').classList.add('selected');
-        document.getElementById('mode-momentary').classList.remove('selected');
-        log("Mode: Toggle");
-      }
+    // Track pulse times per button for sync suppression
+    let lastPulseTimes = Array(8).fill(0);
+    /* --- Config UI Generation --- */
+    function renderConfigList() {
+      const container = document.getElementById('config-list-container');
+      container.innerHTML = '';
+      btnLabels.forEach((label, i) => {
+        const row = document.createElement('div');
+        row.className = 'config-row';
+        const isMom = (btnModes[i] === 'momentary');
+        row.innerHTML = `
+                <div class="config-label">${label}</div>
+                <div class="mini-switch">
+                    <button class="mini-opt ${!isMom ? 'selected' : ''}" onclick="changeBtnMode(${i}, 'toggle')">Toggle</button>
+                    <button class="mini-opt ${isMom ? 'selected' : ''}" onclick="changeBtnMode(${i}, 'momentary')">Pulse</button>
+                </div>
+            `;
+        container.appendChild(row);
+      });
+    }
+    function changeBtnMode(index, mode) {
+      btnModes[index] = mode;
+      localStorage.setItem("btnModes", JSON.stringify(btnModes));
+      renderConfigList(); // Re-render to update UI state
     }
     /* --- Fullscreen Logic --- */
     function toggleFullscreen() {
@@ -397,6 +425,7 @@
     }
     /* --- Navigation --- */
     function showSettings() {
+      renderConfigList(); // Refresh list with current names
       document.getElementById("view-main").classList.remove("active");
       document.getElementById("view-settings").classList.add("active");
     }
@@ -457,20 +486,19 @@
       const decoder = new TextDecoder('utf-8');
       const msg = decoder.decode(value);
       if (msg.startsWith("STATE=")) {
-        // --- SYNC PROTECTION FIX (PULSE) ---
-        // If we are currently pulsing or recently pulsed, IGNORE sync.
-        // This ensures the 150ms ON -> OFF sequence completes without interference.
-        if (isMomentary) {
-          const timeSinceLast = Date.now() - lastPulseTime;
-          if (isPulsing || timeSinceLast < 500) {
-            // log("Ignored Sync (Pulse)");
-            return;
-          }
-        }
         const states = msg.substring(6).split(',');
         if (states.length >= 8) {
+          const now = Date.now();
           states.forEach((s, i) => {
             if (i < 8) {
+              // --- SYNC PROTECTION FIX (Per Button) ---
+              // If this specific button is configured as 'momentary',
+              // check its specific pulse timestamp.
+              if (btnModes[i] === 'momentary') {
+                if (now - lastPulseTimes[i] < 500) {
+                  return; // Ignore sync for this button
+                }
+              }
               btnStates[i] = (s === '1');
               updateBtnVisual(i + 1, btnStates[i]);
             }
@@ -505,27 +533,29 @@
       if (isEditMode) return;
       if (e && e.target.tagName === 'INPUT') return;
       if (e) e.preventDefault(); // Prevent double firing (touch+click)
+      const idx = n - 1;
+      const isMomentary = (btnModes[idx] === 'momentary');
       if (isMomentary) {
         triggerPulse(n);
       } else {
         // Toggle Mode
-        const btnIndex = n - 1;
-        const newState = !btnStates[btnIndex];
+        const newState = !btnStates[idx];
         sendState(n, newState);
       }
     }
     function triggerPulse(n) {
-      // Prevent double triggers if already pulsing (optional safety)
-      // Set flags
-      isPulsing = true;
-      lastPulseTime = Date.now();
+      const idx = n - 1;
+      const now = Date.now();
+      // Prevent rapid fire if needed, though usually fine.
+      // Update timestamp for sync suppression
+      lastPulseTimes[idx] = now;
       // 1. Send ON
       sendState(n, true);
       // 2. Schedule OFF
       setTimeout(() => {
         sendState(n, false);
-        isPulsing = false;
-        lastPulseTime = Date.now();
+        // Update timestamp again so suppression lasts after OFF
+        lastPulseTimes[idx] = Date.now();
       }, 150); // 150ms pulse
     }
     function setCanId() {
@@ -559,6 +589,7 @@
         gearBtn.textContent = "💾";
         gearBtn.onclick = toggleEditMode;
       } else {
+        // Save Labels
         const inputs = document.querySelectorAll(".key-btn input");
         inputs.forEach((input, i) => {
           btnLabels[i] = input.value;
@@ -588,15 +619,13 @@
             <span class="sub">Byte ${i - 1}</span>
         `;
       // Event Listeners for Interaction
-      // Simplified: use 'pointerdown' (covers mouse & touch) for immediate reaction
       b.addEventListener('pointerdown', (e) => {
         handleInteraction(i, e);
       });
-      // We don't need mouseup/touchend for Pulse mode or Toggle mode (toggle is usually click, but pointerdown is snappier)
-      // If we use pointerdown for toggle, we just need to ensure no ghosts.
-      // 'click' might be fired after pointerdown, so we preventDefault in handleInteraction.
       container.appendChild(b);
     }
+    // Initial Render of Config List on Load (hidden but ready)
+    renderConfigList();
   </script>
 </body>
 </html>
