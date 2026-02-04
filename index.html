@@ -1,4 +1,4 @@
-<!-- Version: v2.5 (Config Import/Export) -->
+<!-- Version: v2.6 (Heartbeat & CAN Status) -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -63,6 +63,15 @@
       font-size: 0.9rem;
       color: #888;
       font-weight: bold;
+    }
+    .status-indicator.can-ok {
+      color: #28a745;
+    }
+    .status-indicator.can-err {
+      color: #dc3545;
+    }
+    .status-indicator.stalled {
+      color: #ffc107;
     }
     .status-indicator.connected {
       color: #28a745;
@@ -368,10 +377,11 @@
 <body>
   <!-- KEYPAD VIEW -->
   <div id="view-main" class="view-container active">
-    
     <div class="main-header">
       <div class="status-group">
         <div id="status-display" class="status-indicator">🔴 Disconnected</div>
+        <div id="can-status-display" class="status-indicator"
+          style="display:none; font-size:0.8rem; border-left:1px solid #444; padding-left:10px;">CAN: --</div>
       </div>
       <div style="display:flex; gap:15px;">
         <button class="header-btn" onclick="toggleFullscreen()" title="Fullscreen">⛶</button>
@@ -427,7 +437,7 @@
         <input type="file" id="import-file" style="display:none" accept=".json" onchange="handleFileSelect(this)">
       </div>
       <div style="color: #666; font-size: 0.8rem; text-align: center; margin-top: 10px;">
-        Ver 2.5 (Config Export/Import)<br>
+        Ver 2.6 (Heartbeat & CAN Status)<br>
         M5Atom S3 CAN
       </div>
     </div>
@@ -449,6 +459,9 @@
     let isConnected = false;
     // --- Pulse Logic Variables ---
     let lastPulseTimes = Array(8).fill(0);
+    // --- Watchdog ---
+    let watchdogTimer = null;
+    const WATCHDOG_TIMEOUT = 3500; // 3.5s (Device sends every 1s)
     /* --- Config UI Generation --- */
     function renderConfigList() {
       const container = document.getElementById('config-list-container');
@@ -539,14 +552,50 @@
         keypad.classList.add("visible");
         // Show Disconnect option in settings
         discRow.style.display = "flex";
+        // Start waiting for heartbeat
+        resetWatchdog();
+        document.getElementById("can-status-display").style.display = "block";
       } else {
         ind.textContent = "🔴 Disconnected";
         ind.classList.remove("connected");
+        ind.classList.remove("stalled");
         // Hide Keypad, Show Overlay
         overlay.style.display = "flex";
         keypad.classList.remove("visible");
         // Hide Disconnect option
         discRow.style.display = "none";
+        document.getElementById("can-status-display").style.display = "none";
+        clearTimeout(watchdogTimer);
+      }
+    }
+    function resetWatchdog() {
+      if (!isConnected) return;
+      const ind = document.getElementById("status-display");
+      // Restore "Connected" visual if it was stalled
+      if (ind.textContent.includes("No Response")) {
+        ind.textContent = "🟢 Connected";
+        ind.classList.remove("stalled");
+        ind.classList.add("connected");
+      }
+      clearTimeout(watchdogTimer);
+      watchdogTimer = setTimeout(() => {
+        // Heartbeat lost
+        ind.textContent = "⚠️ No Response";
+        ind.classList.remove("connected");
+        ind.classList.add("stalled");
+        // Optional: Auto disconnect logic? For now just visual warning.
+      }, WATCHDOG_TIMEOUT);
+    }
+    function updateCanStatus(status) {
+      const el = document.getElementById("can-status-display");
+      if (status === "CAN_OK") {
+        el.textContent = "CAN: OK";
+        el.className = "status-indicator can-ok";
+        el.style.display = "block";
+      } else {
+        el.textContent = "CAN: ERR";
+        el.className = "status-indicator can-err";
+        el.style.display = "block";
       }
     }
     // --- CONNECT FLOW (Composite Action) ---
@@ -590,6 +639,8 @@
       const value = event.target.value;
       const decoder = new TextDecoder('utf-8');
       const msg = decoder.decode(value);
+      // Reset watchdog on ANY message from device
+      resetWatchdog();
       if (msg.startsWith("STATE=")) {
         const states = msg.substring(6).split(',');
         if (states.length >= 8) {
@@ -606,6 +657,9 @@
             }
           });
         }
+      } else if (msg.startsWith("STATUS=")) {
+        const st = msg.substring(7);
+        updateCanStatus(st);
       }
     }
     function updateBtnVisual(n, isActive) {
@@ -702,7 +756,7 @@
       const file = input.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onload = function (e) {
         try {
           const config = JSON.parse(e.target.result);
           // Validation / Restoration
@@ -771,9 +825,3 @@
   </script>
 </body>
 </html>
-Good
-Bad
-
-
-
-
