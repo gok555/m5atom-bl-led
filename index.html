@@ -538,8 +538,8 @@
         const icon = btnIcons[i];
         row.innerHTML = `
                 <div style="display:flex; flex-direction:column; gap:2px; align-items:center;">
-                  <button class="mini-opt" style="width:30px; border:1px solid #555;" onclick="openIconPicker(${i})">
-                    ${icon !== 'none' ? '<span style="font-size:1rem;">★</span>' : '<span style="font-size:0.8rem;">Icon</span>'}
+                  <button class="mini-opt" style="width:30px; height:30px; border:1px solid #555; padding:2px;" onclick="openIconPicker(${i})">
+                    ${(icon !== 'none' && ICONS[icon]) ? ICONS[icon] : '<span style="font-size:0.8rem;">Icon</span>'}
                   </button>
                   <input type="color" value="${color}" onchange="updateBtnColor(${i}, this.value)" style="width:30px; height:20px; border:none; background:none; cursor:pointer;">
                 </div>
@@ -657,7 +657,17 @@
     let currentIconBtnIndex = -1;
     function openIconPicker(index) {
       currentIconBtnIndex = index;
-      document.getElementById('icon-picker-overlay').style.display = 'flex';
+      const overlay = document.getElementById('icon-picker-overlay');
+      const grid = document.getElementById('icon-picker-grid');
+      // Generate Grid Content dynamically to render SVGs
+      let html = `<button onclick="selectIcon('none')" style="padding:10px; background:#444; border:none; color:white; border-radius:5px;">TXT</button>`;
+      // Iterate over ICONS (skip 'none')
+      for (const [key, svg] of Object.entries(ICONS)) {
+        if (key === 'none') continue;
+        html += `<button onclick="selectIcon('${key}')" style="padding:5px; background:none; border:1px solid #444; color:white; border-radius:5px; height:40px; width:40px;">${svg}</button>`;
+      }
+      grid.innerHTML = html;
+      overlay.style.display = 'flex';
     }
     function closeIconPicker() {
       document.getElementById('icon-picker-overlay').style.display = 'none';
@@ -667,6 +677,7 @@
         btnIcons[currentIconBtnIndex] = iconKey;
         localStorage.setItem("btnIcons", JSON.stringify(btnIcons));
         renderConfigList();
+        renderKeypadGrid(); // Update Main View immediately
         closeIconPicker();
       }
     }
@@ -1086,32 +1097,14 @@
     style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:20; justify-content:center; align-items:center;">
     <div style="background:#222; padding:20px; border-radius:10px; border:1px solid #555; width:80%; max-width:300px;">
       <div style="text-align:center; margin-bottom:15px; font-weight:bold;">Select Icon</div>
-      <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:10px;">
-        <button onclick="selectIcon('none')"
-          style="padding:10px; background:#444; border:none; color:white; border-radius:5px;">TXT</button>
-        <button onclick="selectIcon('power')"
-          style="padding:5px; background:none; border:1px solid #444; color:white; border-radius:5px;">${ICONS.power}</button>
-        <button onclick="selectIcon('light')"
-          style="padding:5px; background:none; border:1px solid #444; color:white; border-radius:5px;">${ICONS.light}</button>
-        <button onclick="selectIcon('wiper')"
-          style="padding:5px; background:none; border:1px solid #444; color:white; border-radius:5px;">${ICONS.wiper}</button>
-        <button onclick="selectIcon('horn')"
-          style="padding:5px; background:none; border:1px solid #444; color:white; border-radius:5px;">${ICONS.horn}</button>
-        <button onclick="selectIcon('lock')"
-          style="padding:5px; background:none; border:1px solid #444; color:white; border-radius:5px;">${ICONS.lock}</button>
-        <button onclick="selectIcon('music')"
-          style="padding:5px; background:none; border:1px solid #444; color:white; border-radius:5px;">${ICONS.music}</button>
-        <button onclick="selectIcon('fan')"
-          style="padding:5px; background:none; border:1px solid #444; color:white; border-radius:5px;">${ICONS.fan}</button>
-        <button onclick="selectIcon('hazard')"
-          style="padding:5px; background:none; border:1px solid #444; color:white; border-radius:5px;">${ICONS.hazard}</button>
-        <button onclick="selectIcon('setting')"
-          style="padding:5px; background:none; border:1px solid #444; color:white; border-radius:5px;">${ICONS.setting}</button>
+      <div id="icon-picker-grid" style="display:grid; grid-template-columns:repeat(5, 1fr); gap:10px;">
+        <!-- Populated via JS -->
       </div>
       <div style="margin-top:15px; text-align:center;">
-        <button class="action-btn btn-gray" onclick="closeIconPicker()">Cancel</button>
+        <div style="margin-top:15px; text-align:center;">
+          <button class="action-btn btn-gray" onclick="closeIconPicker()">Cancel</button>
+        </div>
       </div>
     </div>
-  </div>
 </body>
 </html>
