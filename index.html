@@ -1,4 +1,4 @@
-<!-- Version: v2.0 (Per-Button Config) -->
+<!-- Version: v2.1 (Settings Integrated Edit) -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -250,11 +250,18 @@
       background: #333;
       padding: 5px 10px;
       border-radius: 6px;
+      gap: 10px;
     }
-    .config-label {
+    .config-name-input {
+      flex-grow: 1;
+      background: #222;
+      border: 1px solid #555;
+      color: white;
+      padding: 5px;
+      border-radius: 4px;
       font-size: 0.9rem;
-      font-weight: bold;
-      color: #eee;
+      min-width: 0;
+      /* Flex fix */
     }
     /* Mini Segmented Control */
     .mini-switch {
@@ -263,6 +270,7 @@
       border-radius: 4px;
       padding: 2px;
       gap: 2px;
+      flex-shrink: 0;
     }
     .mini-opt {
       border: none;
@@ -291,27 +299,6 @@
       padding: 5px;
       border: 1px solid #444;
       box-sizing: border-box;
-    }
-    .editing .key-btn {
-      border-color: #f39c12 !important;
-      background: #444 !important;
-    }
-    .key-btn input {
-      display: none;
-      width: 90%;
-      background: #222;
-      border: 1px solid #777;
-      color: white;
-      text-align: center;
-      font-size: 1rem;
-      padding: 4px;
-      border-radius: 4px;
-    }
-    .editing .key-btn input {
-      display: block;
-    }
-    .editing .key-btn .btn-label {
-      display: none;
     }
   </style>
 </head>
@@ -365,7 +352,7 @@
         <button class="action-btn btn-gray" onclick="toggleFullscreen()">⛶ Toggle Fullscreen</button>
       </div>
       <div style="color: #666; font-size: 0.8rem; text-align: center; margin-top: 10px;">
-        Ver 2.0 (Individual Config)<br>
+        Ver 2.1 (Settings Integrated Edit)<br>
         M5Atom S3 CAN
       </div>
     </div>
@@ -376,7 +363,6 @@
     const RX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
     const TX_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
     let rxChar;
-    let isEditMode = false;
     // Data Storage
     let btnLabels = JSON.parse(localStorage.getItem("btnLabels")) ||
       Array.from({ length: 8 }, (_, i) => `BTN ${i + 1}`);
@@ -396,8 +382,11 @@
         const row = document.createElement('div');
         row.className = 'config-row';
         const isMom = (btnModes[i] === 'momentary');
+        // Input for Name + Switch for Mode
         row.innerHTML = `
-                <div class="config-label">${label}</div>
+                <input type="text" class="config-name-input" value="${label}" 
+                    maxlength="8" onchange="updateBtnLabel(${i}, this.value)">
+                
                 <div class="mini-switch">
                     <button class="mini-opt ${!isMom ? 'selected' : ''}" onclick="changeBtnMode(${i}, 'toggle')">Toggle</button>
                     <button class="mini-opt ${isMom ? 'selected' : ''}" onclick="changeBtnMode(${i}, 'momentary')">Pulse</button>
@@ -409,7 +398,16 @@
     function changeBtnMode(index, mode) {
       btnModes[index] = mode;
       localStorage.setItem("btnModes", JSON.stringify(btnModes));
-      renderConfigList(); // Re-render to update UI state
+      // Re-render to show selection state 
+      // (Note: this re-render might defocus input if editing name, typically fine as separate actions)
+      renderConfigList();
+    }
+    function updateBtnLabel(index, newName) {
+      btnLabels[index] = newName;
+      localStorage.setItem("btnLabels", JSON.stringify(btnLabels));
+      // Update main view label immediately
+      const labelSpan = document.getElementById(`label-${index + 1}`);
+      if (labelSpan) labelSpan.textContent = newName;
     }
     /* --- Fullscreen Logic --- */
     function toggleFullscreen() {
@@ -430,7 +428,6 @@
       document.getElementById("view-settings").classList.add("active");
     }
     function showMain() {
-      if (isEditMode) toggleEditMode();
       document.getElementById("view-settings").classList.remove("active");
       document.getElementById("view-main").classList.add("active");
     }
@@ -530,8 +527,6 @@
     }
     // --- Interaction Handlers ---
     function handleInteraction(n, e) {
-      if (isEditMode) return;
-      if (e && e.target.tagName === 'INPUT') return;
       if (e) e.preventDefault(); // Prevent double firing (touch+click)
       const idx = n - 1;
       const isMomentary = (btnModes[idx] === 'momentary');
@@ -576,46 +571,29 @@
         alert("Invalid Hex ID");
       }
     }
-    function toggleEditMode() {
-      isEditMode = !isEditMode;
-      const container = document.getElementById("keypad");
-      const editBtn = document.getElementById("edit-mode-btn");
-      if (isEditMode) {
-        container.classList.add("editing");
-        editBtn.textContent = "💾 Save Names";
-        editBtn.className = "action-btn btn-green";
-        showMain();
-        const gearBtn = document.getElementById("settings-btn");
-        gearBtn.textContent = "💾";
-        gearBtn.onclick = toggleEditMode;
-      } else {
-        // Save Labels
-        const inputs = document.querySelectorAll(".key-btn input");
-        inputs.forEach((input, i) => {
-          btnLabels[i] = input.value;
-          const labelSpan = document.getElementById(`label-${i + 1}`);
-          if (labelSpan) labelSpan.textContent = input.value;
-        });
-        localStorage.setItem("btnLabels", JSON.stringify(btnLabels));
-        container.classList.remove("editing");
-        editBtn.textContent = "✏️ Edit Names";
-        editBtn.className = "action-btn btn-gray";
-        const gearBtn = document.getElementById("settings-btn");
-        gearBtn.textContent = "⚙️";
-        gearBtn.onclick = showSettings;
-        alert("Names Saved");
-      }
-    }
     /* Init Keypad */
     const container = document.getElementById("keypad");
     for (let i = 1; i <= 8; i++) {
       const b = document.createElement("div");
       b.id = `btn-${i}`;
       b.className = "key-btn";
-      // Internal Structure
+      // Internal Structure - No input here anymore
+      b.innerHTML = `
+            <span id="label-${i + 1}" class="btn-label">${btnLabels[i]}</span>
+            <span class="sub">Byte ${i}</span>
+        `;
+      // Note: btnLabels[i] because loop variable i is 1-based in above context (wait.. loop is 1<=8, so i-1)
+      // Correction: original loop was 1-based.
+    }
+    // RE-INIT Loop Correctly
+    container.innerHTML = ""; // clear
+    for (let i = 1; i <= 8; i++) {
+      const b = document.createElement("div");
+      b.id = `btn-${i}`;
+      b.className = "key-btn";
+      // Display Label Only
       b.innerHTML = `
             <span id="label-${i}" class="btn-label">${btnLabels[i - 1]}</span>
-            <input type="text" value="${btnLabels[i - 1]}" maxlength="8" onclick="event.stopPropagation()">
             <span class="sub">Byte ${i - 1}</span>
         `;
       // Event Listeners for Interaction
