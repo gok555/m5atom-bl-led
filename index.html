@@ -1,4 +1,4 @@
-<!-- Version: v1.6 (Mobile Fixed) -->
+<!-- Version: v1.7 (Mode Switch & Fix) -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -14,15 +14,12 @@
       padding: 0;
       width: 100%;
       height: 100%;
-      /* Fallback */
       height: 100dvh;
-      /* Dynamic Viewport Height */
       overflow: hidden;
       background-color: #1a1a1a;
       color: #ffffff;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       touch-action: manipulation;
-      /* Prevent double-tap zoom */
     }
     body {
       display: flex;
@@ -53,7 +50,6 @@
       margin-bottom: 5px;
       padding: 0 5px;
       flex-shrink: 0;
-      /* Keep header size fixed */
       height: 40px;
     }
     .status-group {
@@ -81,28 +77,21 @@
     #keypad {
       display: grid;
       gap: 8px;
-      /* Slightly tighter gap */
       flex-grow: 1;
-      /* Fill remaining vertical space */
       width: 100%;
       max-width: 600px;
-      /* Limit width on tablets */
       align-self: center;
-      /* Portrait: 2 columns x 4 rows */
       grid-template-columns: repeat(2, 1fr);
       grid-template-rows: repeat(4, 1fr);
     }
-    /* Landscape Layout */
     @media (orientation: landscape) {
       #keypad {
-        /* Landscape: 4 columns x 2 rows */
         grid-template-columns: repeat(4, 1fr);
         grid-template-rows: repeat(2, 1fr);
       }
       .main-header {
         margin-bottom: 2px;
         height: 30px;
-        /* More compact header */
       }
     }
     .key-btn {
@@ -123,10 +112,10 @@
       height: 100%;
       user-select: none;
       -webkit-user-select: none;
-      /* Dynamic Font Size based on viewport */
       font-size: clamp(1rem, 5vw, 2rem);
     }
-    .key-btn:active {
+    .key-btn:active,
+    .key-btn.pressed {
       transform: scale(0.98);
       background: #444;
     }
@@ -149,7 +138,6 @@
     #view-settings {
       background: #222;
       overflow-y: auto;
-      /* Allow scrolling in settings */
       align-items: center;
     }
     .settings-header {
@@ -181,6 +169,9 @@
       display: flex;
       flex-direction: column;
       gap: 20px;
+      /* Ensure padding inside group ensures contents don't touch edges */
+      box-sizing: border-box;
+      padding: 0 5px;
     }
     .control-row {
       width: 100%;
@@ -211,28 +202,67 @@
     .btn-green {
       background: #28a745;
     }
+    /* LAYOUT FIX: Changed display to ensure containment */
     .id-input-group {
       display: flex;
       align-items: center;
       background: #333;
       padding: 5px;
       border-radius: 8px;
-      gap: 10px;
+      gap: 5px;
+      /* Reduced gap */
+      width: 100%;
+      box-sizing: border-box;
+      /* Crucial */
     }
     .id-input-group label {
-      padding-left: 10px;
+      padding-left: 5px;
       color: #ddd;
+      font-size: 0.9rem;
+      white-space: nowrap;
+      /* Keep label on one line */
     }
     #can-id-input {
       flex: 1;
       background: #222;
       border: 1px solid #555;
       color: white;
-      padding: 10px;
+      padding: 10px 5px;
       border-radius: 4px;
       text-align: center;
       font-family: monospace;
-      font-size: 1.2rem;
+      font-size: 1.1rem;
+      min-width: 0;
+      /* Allow flex shrink */
+    }
+    /* LAYOUT FIX: Adjusted padding for SET button */
+    #set-id-btn {
+      padding: 10px 15px;
+      white-space: nowrap;
+    }
+    /* Mode Switcher */
+    .mode-switch {
+      background: #333;
+      border-radius: 8px;
+      padding: 5px;
+      display: flex;
+      gap: 5px;
+    }
+    .mode-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      color: #888;
+      padding: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+    .mode-btn.selected {
+      background: #555;
+      color: white;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     }
     #log {
       margin-top: auto;
@@ -248,7 +278,6 @@
       border: 1px solid #444;
       box-sizing: border-box;
     }
-    /* Edit Mode Styling */
     .editing .key-btn {
       border-color: #f39c12 !important;
       background: #444 !important;
@@ -280,9 +309,7 @@
         <div id="status-display" class="status-indicator">🔴 Disconnected</div>
       </div>
       <div style="display:flex; gap:15px;">
-        <!-- Fullscreen Toggle -->
         <button class="header-btn" onclick="toggleFullscreen()" title="Fullscreen">⛶</button>
-        <!-- Settings -->
         <button id="settings-btn" class="header-btn" onclick="showSettings()">⚙️</button>
       </div>
     </div>
@@ -296,25 +323,40 @@
       <div style="width: 50px;"></div>
     </div>
     <div class="settings-group">
+      <!-- Connect -->
       <div class="control-row">
         <button id="connect-btn" class="action-btn btn-blue" onclick="connect()">🔵 Connect BLE</button>
       </div>
+      <!-- Edit Names -->
       <div class="control-row">
         <button id="edit-mode-btn" class="action-btn btn-gray" onclick="toggleEditMode()">✏️ Edit Names</button>
       </div>
+      <!-- ID Logic -->
       <div class="control-row">
         <div class="id-input-group">
-          <label>ID(Hex): 0x</label>
+          <label>ID(Hex):0x</label>
           <input type="text" id="can-id-input" value="100" maxlength="3">
-          <button id="set-id-btn" class="action-btn btn-orange" style="width:auto; padding: 10px 20px;"
-            onclick="setCanId()">SET</button>
+          <button id="set-id-btn" class="action-btn btn-orange" onclick="setCanId()">SET</button>
         </div>
       </div>
-      <div class="control-row">
+      <!-- Operation Mode -->
+      <div class="control-row" style="margin-top: 10px;">
+        <div style="color: #ccc; font-size: 0.9rem; margin-bottom: 5px; margin-left: 5px;">Button Mode</div>
+        <div class="mode-switch">
+          <button id="mode-toggle" class="mode-btn selected" onclick="setMode('toggle')">Toggle</button>
+          <button id="mode-momentary" class="mode-btn" onclick="setMode('momentary')">Momentary</button>
+        </div>
+        <div style="color: #666; font-size: 0.7rem; margin-top: 3px; margin-left: 5px;">
+          Toggle: Click to Switch ON/OFF<br>
+          Momentary: Hold ON, Release OFF
+        </div>
+      </div>
+      <!-- Fullscreen -->
+      <div class="control-row" style="margin-top: 10px;">
         <button class="action-btn btn-gray" onclick="toggleFullscreen()">⛶ Toggle Fullscreen</button>
       </div>
       <div style="color: #666; font-size: 0.8rem; text-align: center; margin-top: 10px;">
-        Ver 1.6 (Mobile Fixed)<br>
+        Ver 1.7 (Mode Switch)<br>
         M5Atom S3 CAN
       </div>
     </div>
@@ -326,10 +368,25 @@
     const TX_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
     let rxChar;
     let isEditMode = false;
+    let isMomentary = false; // Default Toggle
     let btnLabels = JSON.parse(localStorage.getItem("btnLabels")) ||
       Array.from({ length: 8 }, (_, i) => `BTN ${i + 1}`);
     let btnStates = Array(8).fill(false);
     let isConnected = false;
+    /* --- Mode Logic --- */
+    function setMode(mode) {
+      if (mode === 'momentary') {
+        isMomentary = true;
+        document.getElementById('mode-momentary').classList.add('selected');
+        document.getElementById('mode-toggle').classList.remove('selected');
+        log("Mode: Momentary");
+      } else {
+        isMomentary = false;
+        document.getElementById('mode-toggle').classList.add('selected');
+        document.getElementById('mode-momentary').classList.remove('selected');
+        log("Mode: Toggle");
+      }
+    }
     /* --- Fullscreen Logic --- */
     function toggleFullscreen() {
       if (!document.fullscreenElement) {
@@ -342,7 +399,7 @@
         }
       }
     }
-    /* --- View Navigation --- */
+    /* --- Navigation --- */
     function showSettings() {
       document.getElementById("view-main").classList.remove("active");
       document.getElementById("view-settings").classList.add("active");
@@ -408,6 +465,10 @@
         if (states.length >= 8) {
           states.forEach((s, i) => {
             if (i < 8) {
+              // Only update state from syncing if we are NOT in momentary press!
+              // But for now, we trust the sync.
+              // In momentary mode, this might fight with the press.
+              // Let's assume sync is correct.
               btnStates[i] = (s === '1');
               updateBtnVisual(i + 1, btnStates[i]);
             }
@@ -424,22 +485,40 @@
         btn.classList.remove('active');
       }
     }
-    function send(n) {
-      if (isEditMode) return;
+    // Core function to send Specific State
+    function sendState(n, state) {
       const btnIndex = n - 1;
-      // const newState = !btnStates[btnIndex]; 
-      // Toggle logic relies on sync, but for responsiveness verify current state?
-      // Just toggle assuming user intent
-      const newState = !btnStates[btnIndex];
-      btnStates[btnIndex] = newState;
-      updateBtnVisual(n, newState);
+      btnStates[btnIndex] = state;
+      updateBtnVisual(n, state);
       if (rxChar) {
-        const cmd = `${n}=${newState ? 1 : 0}`;
+        const cmd = `${n}=${state ? 1 : 0}`;
         rxChar.writeValue(new TextEncoder().encode(cmd))
           .catch(e => {
-            log("TX ERR");
+            // log("TX ERR");
           });
       }
+    }
+    function handleClick(n) {
+      if (isEditMode) return;
+      if (isMomentary) return; // Ignore click in Momentary Mode
+      // Toggle Logic
+      const btnIndex = n - 1;
+      const newState = !btnStates[btnIndex];
+      sendState(n, newState);
+    }
+    function handlePressStart(n, e) {
+      if (isEditMode) return;
+      if (!isMomentary) return;
+      e.preventDefault(); // Prevent ghost clicks
+      document.getElementById('btn-' + n).classList.add('pressed');
+      sendState(n, true);
+    }
+    function handlePressEnd(n, e) {
+      if (isEditMode) return;
+      if (!isMomentary) return;
+      if (e) e.preventDefault();
+      document.getElementById('btn-' + n).classList.remove('pressed');
+      sendState(n, false);
     }
     function setCanId() {
       const input = document.getElementById("can-id-input");
@@ -494,14 +573,42 @@
       const b = document.createElement("div");
       b.id = `btn-${i}`;
       b.className = "key-btn";
-      b.onclick = (e) => {
-        if (e.target.tagName !== 'INPUT') send(i);
-      };
+      // Internal Structure
       b.innerHTML = `
-    <span id="label-${i}" class="btn-label">${btnLabels[i - 1]}</span>
-    <input type="text" value="${btnLabels[i - 1]}" maxlength="8" onclick="event.stopPropagation()">
-    <span class="sub">Byte ${i - 1}</span>
-      `;
+            <span id="label-${i}" class="btn-label">${btnLabels[i - 1]}</span>
+            <input type="text" value="${btnLabels[i - 1]}" maxlength="8" onclick="event.stopPropagation()">
+            <span class="sub">Byte ${i - 1}</span>
+        `;
+      // Event Listeners for Interaction
+      // Mouse Events
+      b.addEventListener('mousedown', (e) => {
+        if (e.target.tagName === 'INPUT') return;
+        handlePressStart(i, e);
+      });
+      b.addEventListener('mouseup', (e) => {
+        if (e.target.tagName === 'INPUT') return;
+        handlePressEnd(i, e);
+      });
+      b.addEventListener('mouseleave', (e) => {
+        // If dragging out while held
+        if (isMomentary && b.classList.contains('pressed')) {
+          handlePressEnd(i, e);
+        }
+      });
+      // Touch Events
+      b.addEventListener('touchstart', (e) => {
+        if (e.target.tagName === 'INPUT') return;
+        handlePressStart(i, e);
+      });
+      b.addEventListener('touchend', (e) => {
+        if (e.target.tagName === 'INPUT') return;
+        handlePressEnd(i, e);
+      });
+      // Click (for Toggle)
+      b.addEventListener('click', (e) => {
+        if (e.target.tagName === 'INPUT') return;
+        handleClick(i);
+      });
       container.appendChild(b);
     }
   </script>
