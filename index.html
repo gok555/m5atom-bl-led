@@ -1,4 +1,4 @@
-<!-- Version: v2.4 (Auto Fullscreen on Connect) -->
+<!-- Version: v2.5 (Config Import/Export) -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -416,8 +416,18 @@
       <div class="control-row" style="margin-top: 10px;">
         <button class="action-btn btn-gray" onclick="toggleFullscreen()">⛶ Toggle Fullscreen</button>
       </div>
+      <!-- Config Backup/Restore -->
+      <div class="control-row" style="margin-top: 20px; border-top: 1px solid #444; padding-top: 10px;">
+        <div style="color: #ccc; font-size: 0.9rem; margin-bottom: 5px; text-align: center;">Config Backup</div>
+        <div style="display:flex; gap:10px;">
+          <button class="action-btn btn-blue" onclick="exportConfig()" style="font-size:0.9rem;">⬇ Save Config</button>
+          <button class="action-btn btn-orange" onclick="importConfig()" style="font-size:0.9rem;">⬆ Load
+            Config</button>
+        </div>
+        <input type="file" id="import-file" style="display:none" accept=".json" onchange="handleFileSelect(this)">
+      </div>
       <div style="color: #666; font-size: 0.8rem; text-align: center; margin-top: 10px;">
-        Ver 2.4 (Auto Fullscreen)<br>
+        Ver 2.5 (Config Export/Import)<br>
         M5Atom S3 CAN
       </div>
     </div>
@@ -654,12 +664,90 @@
           log(`Set ID: 0x${val}`);
           alert(`CAN ID set to 0x${val}`);
         } else {
+          // Allow setting ID even if disconnected for config purpose? 
+          // Currently ID is sent to device immediately. 
+          // Let's allow saving to local var if disconnected?
+          // For now, keep original behavior but maybe warn.
           log("Not connected");
-          alert("Not connected");
+          alert("Not connected - ID set in UI but not Device");
         }
       } else {
         alert("Invalid Hex ID");
       }
+    }
+    /* --- Import / Export Logic --- */
+    function exportConfig() {
+      const canIdVal = document.getElementById("can-id-input").value;
+      const config = {
+        version: "2.5",
+        timestamp: new Date().toISOString(),
+        btnLabels: btnLabels,
+        btnModes: btnModes,
+        btnColors: btnColors,
+        canId: canIdVal
+      };
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "m5_can_config.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      log("Config Exported");
+    }
+    function importConfig() {
+      document.getElementById('import-file').click();
+    }
+    function handleFileSelect(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const config = JSON.parse(e.target.result);
+          // Validation / Restoration
+          if (config.btnLabels && Array.isArray(config.btnLabels)) {
+            btnLabels = config.btnLabels;
+            localStorage.setItem("btnLabels", JSON.stringify(btnLabels));
+          }
+          if (config.btnModes && Array.isArray(config.btnModes)) {
+            btnModes = config.btnModes;
+            localStorage.setItem("btnModes", JSON.stringify(btnModes));
+          }
+          if (config.btnColors && Array.isArray(config.btnColors)) {
+            btnColors = config.btnColors;
+            localStorage.setItem("btnColors", JSON.stringify(btnColors));
+          }
+          if (config.canId) {
+            document.getElementById("can-id-input").value = config.canId;
+            // Note: We don't auto-send ID to device here to avoid unexpected traffic. 
+            // User must click SET if they want to push valid ID to device immediately, 
+            // or it will be used next time/manually.
+          }
+          log("Config Loaded");
+          alert("Configuration Loaded Successfully");
+          // Refresh UI
+          renderConfigList();
+          // Refresh Keypad Visuals (Colors/Labels)
+          const keypad = document.getElementById("keypad");
+          keypad.innerHTML = ""; // Clear and rebuild
+          for (let i = 1; i <= 8; i++) {
+            const b = document.createElement("div");
+            b.id = `btn-${i}`;
+            b.className = "key-btn";
+            b.innerHTML = `<span id="label-${i}" class="btn-label">${btnLabels[i - 1]}</span>`;
+            b.style.setProperty('--btn-color', btnColors[i - 1]);
+            b.addEventListener('pointerdown', (e) => handleInteraction(i, e));
+            keypad.appendChild(b);
+          }
+        } catch (err) {
+          log("Import Err: " + err);
+          alert("Failed to load config: Invalid JSON");
+        }
+      };
+      reader.readAsText(file);
+      // Reset input so same file can be selected again if needed
+      input.value = '';
     }
     /* Init Keypad */
     const container = document.getElementById("keypad");
@@ -683,3 +771,9 @@
   </script>
 </body>
 </html>
+Good
+Bad
+
+
+
+
