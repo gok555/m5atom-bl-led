@@ -265,7 +265,8 @@
       gap: 5px;
       width: 100%;
       box-sizing: border-box;
-      flex-wrap: nowrap; /* Prevent wrapping */
+      flex-wrap: nowrap;
+      /* Prevent wrapping */
     }
     .id-input-group label {
       padding-left: 10px;
@@ -274,7 +275,8 @@
       white-space: nowrap;
     }
     #can-id-input {
-      flex: 1; /* Allow growing */
+      flex: 1;
+      /* Allow growing */
       background: #222;
       border: 1px solid #555;
       color: white;
@@ -283,7 +285,8 @@
       text-align: center;
       font-family: monospace;
       font-size: 1.2rem;
-      min-width: 80px; /* Ensure minimum width */
+      min-width: 80px;
+      /* Ensure minimum width */
     }
     #set-id-btn {
       padding: 12px 20px;
@@ -300,7 +303,7 @@
       border-radius: 8px;
     }
     /* Individual Button Config Row */
-    .config-row {
+    .config-list .config-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -417,33 +420,44 @@
           <button id="set-id-btn" class="action-btn btn-orange" onclick="setCanId()">SET</button>
         </div>
       </div>
-      <!-- Button Configurations -->
-      <div class="control-row" style="margin-top: 10px;">
-        <div style="color: #ccc; font-size: 0.9rem; margin-bottom: 5px; margin-left: 5px;">Button Configuration</div>
-        <div id="config-list-container" class="config-list">
-          <!-- Populated by JS -->
-        </div>
-      </div>
-      <!-- Fullscreen -->
-      <div class="control-row" style="margin-top: 10px;">
-        <button class="action-btn btn-gray" onclick="toggleFullscreen()">⛶ Toggle Fullscreen</button>
-      </div>
-      <!-- Config Backup/Restore -->
-      <div class="control-row" style="margin-top: 20px; border-top: 1px solid #444; padding-top: 10px;">
-        <div style="color: #ccc; font-size: 0.9rem; margin-bottom: 5px; text-align: center;">Config Backup</div>
-        <div style="display:flex; gap:10px;">
-          <button class="action-btn btn-blue" onclick="exportConfig()" style="font-size:0.9rem;">⬇ Save Config</button>
-          <button class="action-btn btn-orange" onclick="importConfig()" style="font-size:0.9rem;">⬆ Load
-            Config</button>
-        </div>
-        <input type="file" id="import-file" style="display:none" accept=".json" onchange="handleFileSelect(this)">
-      </div>
-      <div style="color: #666; font-size: 0.8rem; text-align: center; margin-top: 10px;">
-        Ver 2.7 (Custom CAN Values)<br>
-        M5Atom S3 CAN
+    </div>
+    <!-- Mapping Presets (Ver 3.0) -->
+    <div class="control-row" style="margin-top: 10px; border-bottom:1px solid #444; padding-bottom:10px;">
+      <div style="color: #ccc; font-size: 0.9rem; margin-bottom: 5px;">Mapping Presets</div>
+      <div style="display:flex; gap:10px;">
+        <button class="action-btn btn-gray" onclick="applyPreset('normal')"
+          style="padding:10px; font-size:0.8rem;">Normal (1=0..8=7)</button>
+        <button class="action-btn btn-gray" onclick="applyPreset('reverse')"
+          style="padding:10px; font-size:0.8rem;">Reverse (1=7..8=0)</button>
       </div>
     </div>
-    <pre id="log">Logs...</pre>
+    <!-- Button Configurations -->
+    <div class="control-row" style="margin-top: 10px;">
+      <div style="color: #ccc; font-size: 0.9rem; margin-bottom: 5px; margin-left: 5px;">Button Configuration</div>
+      <div id="config-list-container" class="config-list">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+    <!-- Fullscreen -->
+    <div class="control-row" style="margin-top: 10px;">
+      <button class="action-btn btn-gray" onclick="toggleFullscreen()">⛶ Toggle Fullscreen</button>
+    </div>
+    <!-- Config Backup/Restore -->
+    <div class="control-row" style="margin-top: 20px; border-top: 1px solid #444; padding-top: 10px;">
+      <div style="color: #ccc; font-size: 0.9rem; margin-bottom: 5px; text-align: center;">Config Backup</div>
+      <div style="display:flex; gap:10px;">
+        <button class="action-btn btn-blue" onclick="exportConfig()" style="font-size:0.9rem;">⬇ Save Config</button>
+        <button class="action-btn btn-orange" onclick="importConfig()" style="font-size:0.9rem;">⬆ Load
+          Config</button>
+      </div>
+      <input type="file" id="import-file" style="display:none" accept=".json" onchange="handleFileSelect(this)">
+    </div>
+    <div style="color: #666; font-size: 0.8rem; text-align: center; margin-top: 10px;">
+      Ver 3.0 (Per-Button Endian)<br>
+      M5Atom S3 CAN
+    </div>
+  </div>
+  <pre id="log">Logs...</pre>
   </div>
   <script>
     const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
@@ -459,6 +473,9 @@
       Array(8).fill('00'); // Default OFF = 0x00
     let btnModes = JSON.parse(localStorage.getItem("btnModes")) ||
       Array(8).fill('toggle');
+    // Ver 3.0: Per-Button Endianness
+    let btnEndian = JSON.parse(localStorage.getItem("btnEndian")) ||
+      Array(8).fill('big');
     let btnColors = JSON.parse(localStorage.getItem("btnColors")) ||
       Array(8).fill('#00FF00');
     let btnStates = Array(8).fill(false);
@@ -477,6 +494,7 @@
         row.className = 'config-row';
         const isMom = (btnModes[i] === 'momentary');
         const color = btnColors[i];
+        const endian = btnEndian[i];
         row.innerHTML = `
                 <input type="color" value="${color}" onchange="updateBtnColor(${i}, this.value)" style="width:30px; height:30px; border:none; background:none; cursor:pointer;">
                 
@@ -498,9 +516,17 @@
                 </div>
                 
                 <div class="mini-switch">
-                    <button class="mini-opt ${!isMom ? 'selected' : ''}" onclick="changeBtnMode(${i}, 'toggle')">Toggle</button>
-                    <button class="mini-opt ${isMom ? 'selected' : ''}" onclick="changeBtnMode(${i}, 'momentary')">Pulse</button>
+                    <button class="mini-opt ${!isMom ? 'selected' : ''}" onclick="changeBtnMode(${i}, 'toggle')">Tog</button>
+                    <button class="mini-opt ${isMom ? 'selected' : ''}" onclick="changeBtnMode(${i}, 'momentary')">Pul</button>
                 </div>
+                 <!-- Endian Switch -->
+                 <div style="display:flex; flex-direction:column; align-items:center; margin-left:5px;">
+                   <span style="font-size:0.6rem; color:#888;">Endian</span>
+                   <div class="mini-switch">
+                     <button class="mini-opt ${endian === 'big' ? 'selected' : ''}" onclick="updateBtnEndian(${i}, 'big')">B</button>
+                     <button class="mini-opt ${endian === 'little' ? 'selected' : ''}" onclick="updateBtnEndian(${i}, 'little')">L</button>
+                   </div>
+                 </div>
             `;
         container.appendChild(row);
       });
@@ -539,6 +565,21 @@
       if (btn) {
         btn.style.setProperty('--btn-color', newColor);
       }
+    }
+    /* --- Endian Logic (Ver 3.0) --- */
+    function updateBtnEndian(index, mode) {
+      btnEndian[index] = mode;
+      localStorage.setItem("btnEndian", JSON.stringify(btnEndian));
+      renderConfigList();
+    }
+    function applyPreset(type) {
+      if (type === 'normal') {
+        btnEndian = Array(8).fill('big');
+      } else {
+        btnEndian = Array(8).fill('little');
+      }
+      localStorage.setItem("btnEndian", JSON.stringify(btnEndian));
+      renderConfigList();
     }
     /* --- Fullscreen Logic --- */
     function toggleFullscreen() {
@@ -681,20 +722,25 @@
         const states = msg.substring(6).split(',');
         if (states.length >= 8) {
           const now = Date.now();
-          states.forEach((s, i) => {
-            if (i < 8) {
-              if (btnModes[i] === 'momentary') {
-                if (now - lastPulseTimes[i] < 500) {
-                  return; // Ignore sync
-                }
-              }
-              // Version 2.7 Fix: Compare with configured ON value (decimal)
-              const receivedVal = parseInt(s, 10);
-              const onVal = parseInt(btnOnVals[i], 16);
-              btnStates[i] = (receivedVal === onVal);
-              updateBtnVisual(i + 1, btnStates[i]);
+          // Ver 3.0: Iterate Buttons and mapped indices
+          for (let i = 0; i < 8; i++) {
+            let targetIdx = i;
+            if (btnEndian[i] === 'little') {
+              targetIdx = 7 - i;
             }
-          });
+            const s = states[targetIdx];
+            if (s === undefined) continue;
+            if (btnModes[i] === 'momentary') {
+              if (now - lastPulseTimes[i] < 500) {
+                continue; // Ignore sync
+              }
+            }
+            // Version 2.7 Logic preserved
+            const receivedVal = parseInt(s, 10);
+            const onVal = parseInt(btnOnVals[i], 16);
+            btnStates[i] = (receivedVal === onVal);
+            updateBtnVisual(i + 1, btnStates[i]);
+          }
         }
       } else if (msg.startsWith("STATUS=")) {
         const st = msg.substring(7);
@@ -719,7 +765,13 @@
         // Version 2.7: Send Configured Hex Value
         const valStr = state ? btnOnVals[btnIndex] : btnOffVals[btnIndex];
         const valInt = parseInt(valStr, 16);
-        const cmd = `${n}=${valInt}`;
+        // Ver 3.0: Endian Mapping
+        let targetIdx = btnIndex;
+        if (btnEndian[btnIndex] === 'little') {
+          targetIdx = 7 - btnIndex;
+        }
+        const targetN = targetIdx + 1;
+        const cmd = `${targetN}=${valInt}`;
         rxChar.writeValue(new TextEncoder().encode(cmd))
           .catch(e => {
             // log("TX ERR");
@@ -782,6 +834,7 @@
         btnColors: btnColors,
         btnOnVals: btnOnVals,
         btnOffVals: btnOffVals,
+        btnEndian: btnEndian,
         canId: canIdVal
       };
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config, null, 2));
@@ -823,6 +876,10 @@
           if (config.btnOffVals && Array.isArray(config.btnOffVals)) {
             btnOffVals = config.btnOffVals;
             localStorage.setItem("btnOffVals", JSON.stringify(btnOffVals));
+          }
+          if (config.btnEndian && Array.isArray(config.btnEndian)) {
+            btnEndian = config.btnEndian;
+            localStorage.setItem("btnEndian", JSON.stringify(btnEndian));
           }
           if (config.canId) {
             document.getElementById("can-id-input").value = config.canId;
