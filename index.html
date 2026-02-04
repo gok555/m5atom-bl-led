@@ -1,4 +1,4 @@
-<!-- Version: v2.5 (Config Import/Export) -->
+<!-- Version: v2.7 (Custom CAN Values) -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -439,7 +439,7 @@
         <input type="file" id="import-file" style="display:none" accept=".json" onchange="handleFileSelect(this)">
       </div>
       <div style="color: #666; font-size: 0.8rem; text-align: center; margin-top: 10px;">
-        Ver 2.5 (Config Export/Import)<br>
+        Ver 2.7 (Custom CAN Values)<br>
         M5Atom S3 CAN
       </div>
     </div>
@@ -453,6 +453,10 @@
     // Data Storage
     let btnLabels = JSON.parse(localStorage.getItem("btnLabels")) ||
       Array.from({ length: 8 }, (_, i) => `BTN ${i + 1}`);
+    let btnOnVals = JSON.parse(localStorage.getItem("btnOnVals")) ||
+      Array(8).fill('01'); // Default ON = 0x01
+    let btnOffVals = JSON.parse(localStorage.getItem("btnOffVals")) ||
+      Array(8).fill('00'); // Default OFF = 0x00
     let btnModes = JSON.parse(localStorage.getItem("btnModes")) ||
       Array(8).fill('toggle');
     let btnColors = JSON.parse(localStorage.getItem("btnColors")) ||
@@ -474,10 +478,24 @@
         const isMom = (btnModes[i] === 'momentary');
         const color = btnColors[i];
         row.innerHTML = `
-                <input type="color" value="${color}" onchange="updateBtnColor(${i}, this.value)">
+                <input type="color" value="${color}" onchange="updateBtnColor(${i}, this.value)" style="width:30px; height:30px; border:none; background:none; cursor:pointer;">
                 
                 <input type="text" class="config-name-input" value="${label}" 
-                    maxlength="8" onchange="updateBtnLabel(${i}, this.value)">
+                    maxlength="8" onchange="updateBtnLabel(${i}, this.value)" style="width: 80px;">
+                <div style="display:flex; flex-direction:column; gap:2px;">
+                  <div style="display:flex; gap:2px; align-items:center;">
+                    <span style="font-size:0.7rem; color:#aaa;">ON:0x</span>
+                    <input type="text" value="${btnOnVals[i]}" maxlength="2" 
+                      onchange="updateBtnVal(${i}, 'on', this.value)"
+                      style="width:25px; background:#222; border:1px solid #555; color:white; font-family:monospace; text-align:center; padding:1px;">
+                  </div>
+                   <div style="display:flex; gap:2px; align-items:center;">
+                    <span style="font-size:0.7rem; color:#aaa;">OFF:0x</span>
+                    <input type="text" value="${btnOffVals[i]}" maxlength="2" 
+                      onchange="updateBtnVal(${i}, 'off', this.value)"
+                      style="width:25px; background:#222; border:1px solid #555; color:white; font-family:monospace; text-align:center; padding:1px;">
+                  </div>
+                </div>
                 
                 <div class="mini-switch">
                     <button class="mini-opt ${!isMom ? 'selected' : ''}" onclick="changeBtnMode(${i}, 'toggle')">Toggle</button>
@@ -497,6 +515,22 @@
       localStorage.setItem("btnLabels", JSON.stringify(btnLabels));
       const labelSpan = document.getElementById(`label-${index + 1}`);
       if (labelSpan) labelSpan.textContent = newName;
+    }
+    function updateBtnVal(index, type, val) {
+      // Validate Hex
+      if (!/^[0-9A-Fa-f]{1,2}$/.test(val)) {
+        alert("Invalid Hex");
+        renderConfigList(); // Reset
+        return;
+      }
+      val = val.toUpperCase().padStart(2, '0'); // Format to 2 chars
+      if (type === 'on') {
+        btnOnVals[index] = val;
+        localStorage.setItem("btnOnVals", JSON.stringify(btnOnVals));
+      } else {
+        btnOffVals[index] = val;
+        localStorage.setItem("btnOffVals", JSON.stringify(btnOffVals));
+      }
     }
     function updateBtnColor(index, newColor) {
       btnColors[index] = newColor;
@@ -679,7 +713,10 @@
       btnStates[btnIndex] = state;
       updateBtnVisual(n, state);
       if (rxChar) {
-        const cmd = `${n}=${state ? 1 : 0}`;
+        // Version 2.7: Send Configured Hex Value
+        const valStr = state ? btnOnVals[btnIndex] : btnOffVals[btnIndex];
+        const valInt = parseInt(valStr, 16);
+        const cmd = `${n}=${valInt}`;
         rxChar.writeValue(new TextEncoder().encode(cmd))
           .catch(e => {
             // log("TX ERR");
@@ -703,9 +740,9 @@
       const idx = n - 1;
       const now = Date.now();
       lastPulseTimes[idx] = now;
-      sendState(n, true);
+      sendState(n, true); // Sends btnOnVals
       setTimeout(() => {
-        sendState(n, false);
+        sendState(n, false); // Sends btnOffVals
         lastPulseTimes[idx] = Date.now();
       }, 150);
     }
@@ -740,6 +777,8 @@
         btnLabels: btnLabels,
         btnModes: btnModes,
         btnColors: btnColors,
+        btnOnVals: btnOnVals,
+        btnOffVals: btnOffVals,
         canId: canIdVal
       };
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config, null, 2));
@@ -773,6 +812,14 @@
           if (config.btnColors && Array.isArray(config.btnColors)) {
             btnColors = config.btnColors;
             localStorage.setItem("btnColors", JSON.stringify(btnColors));
+          }
+          if (config.btnOnVals && Array.isArray(config.btnOnVals)) {
+            btnOnVals = config.btnOnVals;
+            localStorage.setItem("btnOnVals", JSON.stringify(btnOnVals));
+          }
+          if (config.btnOffVals && Array.isArray(config.btnOffVals)) {
+            btnOffVals = config.btnOffVals;
+            localStorage.setItem("btnOffVals", JSON.stringify(btnOffVals));
           }
           if (config.canId) {
             document.getElementById("can-id-input").value = config.canId;
