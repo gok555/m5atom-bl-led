@@ -1,4 +1,4 @@
-<!-- Version: v1.7 (Mode Switch & Fix) -->
+<!-- Version: v1.8 (Momentary Sync Fix) -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -169,7 +169,6 @@
       display: flex;
       flex-direction: column;
       gap: 20px;
-      /* Ensure padding inside group ensures contents don't touch edges */
       box-sizing: border-box;
       padding: 0 5px;
     }
@@ -202,7 +201,6 @@
     .btn-green {
       background: #28a745;
     }
-    /* LAYOUT FIX: Changed display to ensure containment */
     .id-input-group {
       display: flex;
       align-items: center;
@@ -210,17 +208,14 @@
       padding: 5px;
       border-radius: 8px;
       gap: 5px;
-      /* Reduced gap */
       width: 100%;
       box-sizing: border-box;
-      /* Crucial */
     }
     .id-input-group label {
       padding-left: 5px;
       color: #ddd;
       font-size: 0.9rem;
       white-space: nowrap;
-      /* Keep label on one line */
     }
     #can-id-input {
       flex: 1;
@@ -233,9 +228,7 @@
       font-family: monospace;
       font-size: 1.1rem;
       min-width: 0;
-      /* Allow flex shrink */
     }
-    /* LAYOUT FIX: Adjusted padding for SET button */
     #set-id-btn {
       padding: 10px 15px;
       white-space: nowrap;
@@ -356,7 +349,7 @@
         <button class="action-btn btn-gray" onclick="toggleFullscreen()">⛶ Toggle Fullscreen</button>
       </div>
       <div style="color: #666; font-size: 0.8rem; text-align: center; margin-top: 10px;">
-        Ver 1.7 (Mode Switch)<br>
+        Ver 1.8 (Momentary Sync Fix)<br>
         M5Atom S3 CAN
       </div>
     </div>
@@ -373,6 +366,9 @@
       Array.from({ length: 8 }, (_, i) => `BTN ${i + 1}`);
     let btnStates = Array(8).fill(false);
     let isConnected = false;
+    // --- Momentary Logic Fix ---
+    let isPressingAny = false;
+    let lastInteractionTime = 0; // Timestamp of last press/release
     /* --- Mode Logic --- */
     function setMode(mode) {
       if (mode === 'momentary') {
@@ -461,14 +457,20 @@
       const decoder = new TextDecoder('utf-8');
       const msg = decoder.decode(value);
       if (msg.startsWith("STATE=")) {
+        // --- SYNC PROTECTION FIX ---
+        // If in Momentary Mode, and we are pressing OR recently released (500ms safety window),
+        // IGNORE the sync packet. This prevents old latency data from reverting our UI state.
+        if (isMomentary) {
+          const timeSinceLast = Date.now() - lastInteractionTime;
+          if (isPressingAny || timeSinceLast < 500) {
+            // log("Ignored Sync (Anti-Flicker)");
+            return;
+          }
+        }
         const states = msg.substring(6).split(',');
         if (states.length >= 8) {
           states.forEach((s, i) => {
             if (i < 8) {
-              // Only update state from syncing if we are NOT in momentary press!
-              // But for now, we trust the sync.
-              // In momentary mode, this might fight with the press.
-              // Let's assume sync is correct.
               btnStates[i] = (s === '1');
               updateBtnVisual(i + 1, btnStates[i]);
             }
@@ -501,6 +503,7 @@
     function handleClick(n) {
       if (isEditMode) return;
       if (isMomentary) return; // Ignore click in Momentary Mode
+      lastInteractionTime = Date.now();
       // Toggle Logic
       const btnIndex = n - 1;
       const newState = !btnStates[btnIndex];
@@ -509,13 +512,19 @@
     function handlePressStart(n, e) {
       if (isEditMode) return;
       if (!isMomentary) return;
-      e.preventDefault(); // Prevent ghost clicks
+      // Fix Logic
+      isPressingAny = true;
+      lastInteractionTime = Date.now();
+      e.preventDefault();
       document.getElementById('btn-' + n).classList.add('pressed');
       sendState(n, true);
     }
     function handlePressEnd(n, e) {
       if (isEditMode) return;
       if (!isMomentary) return;
+      // Fix Logic
+      isPressingAny = false;
+      lastInteractionTime = Date.now();
       if (e) e.preventDefault();
       document.getElementById('btn-' + n).classList.remove('pressed');
       sendState(n, false);
