@@ -1,4 +1,4 @@
-<!-- Version: v2.3 (Main Screen Connect) -->
+<!-- Version: v2.4 (Auto Fullscreen on Connect) -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -380,7 +380,8 @@
     </div>
     <!-- Main Connect Button Overlay -->
     <div id="connect-overlay">
-      <button id="start-btn" onclick="connect()">CONNECT<br>START</button>
+      <!-- Changed to call handleStartConnect() for composite action -->
+      <button id="start-btn" onclick="handleStartConnect()">CONNECT<br>START</button>
     </div>
     <div id="keypad"></div>
   </div>
@@ -416,7 +417,7 @@
         <button class="action-btn btn-gray" onclick="toggleFullscreen()">⛶ Toggle Fullscreen</button>
       </div>
       <div style="color: #666; font-size: 0.8rem; text-align: center; margin-top: 10px;">
-        Ver 2.3 (Main Screen Connect)<br>
+        Ver 2.4 (Auto Fullscreen)<br>
         M5Atom S3 CAN
       </div>
     </div>
@@ -484,12 +485,19 @@
     function toggleFullscreen() {
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch(e => {
-          log("FS Err: " + e);
+          // log("FS Err: " + e); // Common if not user gesture
         });
       } else {
         if (document.exitFullscreen) {
           document.exitFullscreen();
         }
+      }
+    }
+    function enterFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(e => {
+          // log("FS IGNORED");
+        });
       }
     }
     /* --- Navigation --- */
@@ -531,6 +539,14 @@
         discRow.style.display = "none";
       }
     }
+    // --- CONNECT FLOW (Composite Action) ---
+    async function handleStartConnect() {
+      // 1. Enter Fullscreen (User Gesture #1)
+      enterFullscreen();
+      // 2. Start BLE Connect (User Gesture #1 continues usually ok in async but safer to do synchronous start if possible, 
+      // but BLE requires promise. Both share the same 'click' event context usually.)
+      await connect();
+    }
     async function connect() {
       try {
         device = await navigator.bluetooth.requestDevice({
@@ -541,12 +557,10 @@
         device.addEventListener('gattserverdisconnected', () => {
           log("Disconnected Event");
           updateStatus(false);
-          // Auto-reconnect not allowed without gesture typically,
-          // so user must tap Start again.
         });
         const svc = await gattServer.getPrimaryService(SERVICE_UUID);
         rxChar = await svc.getCharacteristic(RX_UUID);
-        txChar = await svc.getCharacteristic(TX_UUID); // Store for ref, maybe used later
+        txChar = await svc.getCharacteristic(TX_UUID);
         await txChar.startNotifications();
         txChar.addEventListener('characteristicvaluechanged', handleNotifications);
         updateStatus(true);
