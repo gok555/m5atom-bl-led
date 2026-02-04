@@ -688,7 +688,10 @@
                   return; // Ignore sync
                 }
               }
-              btnStates[i] = (s === '1');
+              // Version 2.7 Fix: Compare with configured ON value (decimal)
+              const receivedVal = parseInt(s, 10);
+              const onVal = parseInt(btnOnVals[i], 16);
+              btnStates[i] = (receivedVal === onVal);
               updateBtnVisual(i + 1, btnStates[i]);
             }
           });
