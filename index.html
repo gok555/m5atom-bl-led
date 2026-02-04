@@ -1,4 +1,4 @@
-<!-- Version: v3.2 (Bit Reversal + Feedback) -->
+<!-- Version: v3.3 (Icon Support) -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -470,7 +470,10 @@
         <input type="file" id="import-file" style="display:none" accept=".json" onchange="handleFileSelect(this)">
       </div>
       <div style="color: #666; font-size: 0.8rem; text-align: center; margin-top: 10px;">
-        Ver 3.2 (Bit Reversal + Feedback)<br>
+        <div style="color: #666; font-size: 0.8rem; text-align: center; margin-top: 10px;">
+          Ver 3.3 (Icon Support)<br>
+          M5Atom S3 CAN
+        </div>
         M5Atom S3 CAN
       </div>
     </div>
@@ -480,6 +483,19 @@
     const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
     const RX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
     const TX_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+    /* --- ICONS (Ver 3.3) --- */
+    const ICONS = {
+      none: null,
+      power: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>',
+      light: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-8.5h-2v3h2V2zm4.25 4.42l1.79 1.79 1.41-1.41-1.79-1.79-1.41 1.41zm5.75 4.08h-3v2h3v-2zm-12 11V6.5h14V17c0 2.21-1.79 4-4 4h-6c-2.21 0-4-1.79-4-4z"/></svg>',
+      wiper: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18"/><path d="M5 12l2-6 8 0 2 6"/><path d="M14 6l-2-3"/></svg>', // Simplified
+      horn: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 10v4h2l5 5v-14l-5 5H3zm13.5 2c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>',
+      lock: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>',
+      music: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>',
+      fan: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 11c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 2c0-3.31-2.69-6-6-6s-6 2.69-6 6c0 2.22 1.21 4.15 3 5.19V14.2c-1.21-.63-2-2.16-2-3.2 0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.79 2.57-2 3.2v3.99c1.79-1.04 3-2.97 3-5.19z"/></svg>',
+      hazard: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>',
+      setting: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84a.484.484 0 0 0-.48.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.27.41.48.41h3.84c.24 0 .44-.17.48-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>'
+    };
     let device, rxChar, txChar, gattServer;
     // Data Storage
     let btnLabels = JSON.parse(localStorage.getItem("btnLabels")) ||
@@ -488,6 +504,8 @@
       Array(8).fill('01'); // Default ON = 0x01
     let btnOffVals = JSON.parse(localStorage.getItem("btnOffVals")) ||
       Array(8).fill('00'); // Default OFF = 0x00
+    let btnIcons = JSON.parse(localStorage.getItem("btnIcons")) ||
+      Array(8).fill('none'); // Default no icon
     let btnModes = JSON.parse(localStorage.getItem("btnModes")) ||
       Array(8).fill('toggle');
     // Ver 3.0: Per-Button Endianness
@@ -517,11 +535,17 @@
         const isMom = (btnModes[i] === 'momentary');
         const color = btnColors[i];
         const endian = btnEndian[i];
+        const icon = btnIcons[i];
         row.innerHTML = `
-                <input type="color" value="${color}" onchange="updateBtnColor(${i}, this.value)" style="width:30px; height:30px; border:none; background:none; cursor:pointer;">
+                <div style="display:flex; flex-direction:column; gap:2px; align-items:center;">
+                  <button class="mini-opt" style="width:30px; border:1px solid #555;" onclick="openIconPicker(${i})">
+                    ${icon !== 'none' ? '<span style="font-size:1rem;">★</span>' : '<span style="font-size:0.8rem;">Icon</span>'}
+                  </button>
+                  <input type="color" value="${color}" onchange="updateBtnColor(${i}, this.value)" style="width:30px; height:20px; border:none; background:none; cursor:pointer;">
+                </div>
                 
                 <input type="text" class="config-name-input" value="${label}" 
-                    maxlength="8" onchange="updateBtnLabel(${i}, this.value)" style="width: 80px;">
+                    maxlength="8" onchange="updateBtnLabel(${i}, this.value)" style="width: 70px;">
                 <div style="display:flex; flex-direction:column; gap:2px;">
                   <div style="display:flex; gap:2px; align-items:center;">
                     <span style="font-size:0.7rem; color:#aaa;">ON:0x</span>
@@ -627,6 +651,23 @@
       if (so && sf) {
         so.className = `mini-opt ${cfgSound ? 'selected' : ''}`;
         sf.className = `mini-opt ${!cfgSound ? 'selected' : ''}`;
+      }
+    }
+    /* --- Icon Picker Logic (Ver 3.3) --- */
+    let currentIconBtnIndex = -1;
+    function openIconPicker(index) {
+      currentIconBtnIndex = index;
+      document.getElementById('icon-picker-overlay').style.display = 'flex';
+    }
+    function closeIconPicker() {
+      document.getElementById('icon-picker-overlay').style.display = 'none';
+    }
+    function selectIcon(iconKey) {
+      if (currentIconBtnIndex >= 0) {
+        btnIcons[currentIconBtnIndex] = iconKey;
+        localStorage.setItem("btnIcons", JSON.stringify(btnIcons));
+        renderConfigList();
+        closeIconPicker();
       }
     }
     function initAudio() {
@@ -921,6 +962,7 @@
         btnOnVals: btnOnVals,
         btnOffVals: btnOffVals,
         btnEndian: btnEndian,
+        btnIcons: btnIcons,
         cfgVibe: cfgVibe,
         cfgSound: cfgSound,
         canId: canIdVal
@@ -969,6 +1011,10 @@
             btnEndian = config.btnEndian;
             localStorage.setItem("btnEndian", JSON.stringify(btnEndian));
           }
+          if (config.btnIcons && Array.isArray(config.btnIcons)) {
+            btnIcons = config.btnIcons;
+            localStorage.setItem("btnIcons", JSON.stringify(btnIcons));
+          }
           if (config.cfgVibe !== undefined) {
             cfgVibe = config.cfgVibe;
             localStorage.setItem("cfgVibe", JSON.stringify(cfgVibe));
@@ -987,18 +1033,8 @@
           alert("Configuration Loaded Successfully");
           // Refresh UI
           renderConfigList();
-          // Refresh Keypad Visuals (Colors/Labels)
-          const keypad = document.getElementById("keypad");
-          keypad.innerHTML = ""; // Clear and rebuild
-          for (let i = 1; i <= 8; i++) {
-            const b = document.createElement("div");
-            b.id = `btn-${i}`;
-            b.className = "key-btn";
-            b.innerHTML = `<span id="label-${i}" class="btn-label">${btnLabels[i - 1]}</span>`;
-            b.style.setProperty('--btn-color', btnColors[i - 1]);
-            b.addEventListener('pointerdown', (e) => handleInteraction(i, e));
-            keypad.appendChild(b);
-          }
+          // Refresh Keypad Visuals (Colors/Labels/Icons)
+          renderKeypadGrid();
         } catch (err) {
           log("Import Err: " + err);
           alert("Failed to load config: Invalid JSON");
@@ -1009,24 +1045,73 @@
       input.value = '';
     }
     /* Init Keypad */
-    const container = document.getElementById("keypad");
-    for (let i = 1; i <= 8; i++) {
-      const b = document.createElement("div");
-      b.id = `btn-${i}`;
-      b.className = "key-btn";
-      b.innerHTML = `
-            <span id="label-${i}" class="btn-label">${btnLabels[i - 1]}</span>
-        `;
-      b.style.setProperty('--btn-color', btnColors[i - 1]);
-      b.addEventListener('pointerdown', (e) => {
-        handleInteraction(i, e);
-      });
-      container.appendChild(b);
+    function renderKeypadGrid() {
+      const container = document.getElementById("keypad");
+      container.innerHTML = "";
+      for (let i = 1; i <= 8; i++) {
+        const b = document.createElement("div");
+        b.id = `btn-${i}`;
+        b.className = "key-btn";
+        const iconKey = btnIcons[i - 1];
+        let innerHTML = '';
+        if (iconKey && iconKey !== 'none' && ICONS[iconKey]) {
+          // Icon + Label
+          innerHTML = `
+              <div style="width:50%; height:50%; margin-bottom:5px;">${ICONS[iconKey]}</div>
+              <span id="label-${i}" class="btn-label" style="font-size:0.9rem;">${btnLabels[i - 1]}</span>
+            `;
+        } else {
+          // Label Only
+          innerHTML = `
+              <span id="label-${i}" class="btn-label">${btnLabels[i - 1]}</span>
+            `;
+        }
+        b.innerHTML = innerHTML;
+        b.style.setProperty('--btn-color', btnColors[i - 1]);
+        b.addEventListener('pointerdown', (e) => {
+          handleInteraction(i, e);
+        });
+        container.appendChild(b);
+      }
     }
+    // Initial Render
+    renderKeypadGrid();
     // Initial Render
     renderConfigList();
     // Init Status (Show Overlay)
     updateStatus(false);
   </script>
+  <!-- Icon Picker Overlay -->
+  <div id="icon-picker-overlay"
+    style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:20; justify-content:center; align-items:center;">
+    <div style="background:#222; padding:20px; border-radius:10px; border:1px solid #555; width:80%; max-width:300px;">
+      <div style="text-align:center; margin-bottom:15px; font-weight:bold;">Select Icon</div>
+      <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:10px;">
+        <button onclick="selectIcon('none')"
+          style="padding:10px; background:#444; border:none; color:white; border-radius:5px;">TXT</button>
+        <button onclick="selectIcon('power')"
+          style="padding:5px; background:none; border:1px solid #444; color:white; border-radius:5px;">${ICONS.power}</button>
+        <button onclick="selectIcon('light')"
+          style="padding:5px; background:none; border:1px solid #444; color:white; border-radius:5px;">${ICONS.light}</button>
+        <button onclick="selectIcon('wiper')"
+          style="padding:5px; background:none; border:1px solid #444; color:white; border-radius:5px;">${ICONS.wiper}</button>
+        <button onclick="selectIcon('horn')"
+          style="padding:5px; background:none; border:1px solid #444; color:white; border-radius:5px;">${ICONS.horn}</button>
+        <button onclick="selectIcon('lock')"
+          style="padding:5px; background:none; border:1px solid #444; color:white; border-radius:5px;">${ICONS.lock}</button>
+        <button onclick="selectIcon('music')"
+          style="padding:5px; background:none; border:1px solid #444; color:white; border-radius:5px;">${ICONS.music}</button>
+        <button onclick="selectIcon('fan')"
+          style="padding:5px; background:none; border:1px solid #444; color:white; border-radius:5px;">${ICONS.fan}</button>
+        <button onclick="selectIcon('hazard')"
+          style="padding:5px; background:none; border:1px solid #444; color:white; border-radius:5px;">${ICONS.hazard}</button>
+        <button onclick="selectIcon('setting')"
+          style="padding:5px; background:none; border:1px solid #444; color:white; border-radius:5px;">${ICONS.setting}</button>
+      </div>
+      <div style="margin-top:15px; text-align:center;">
+        <button class="action-btn btn-gray" onclick="closeIconPicker()">Cancel</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
