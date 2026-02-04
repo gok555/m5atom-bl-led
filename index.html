@@ -1,146 +1,91 @@
-<!-- Version: v1.4.1 (ID Select) -->
+<!-- Version: v1.5 (Split Mode) -->
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>M5Atom CAN Keypad</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background-color: #1a1a1a;
       color: #ffffff;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-      margin: 0;
-      padding: 20px;
+    }
+    /* --- Views --- */
+    .view-container {
+      display: none;
+      width: 100%;
+      height: 100%;
+      flex-direction: column;
       box-sizing: border-box;
+      padding: 10px;
     }
-    .header {
+    .view-container.active {
       display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin-bottom: 20px;
-      width: 100%;
     }
-    h1 {
-      margin: 0;
-      font-size: 1.5rem;
-      text-align: center;
-    }
-    .version {
-      font-size: 0.8rem;
-      color: #666;
-      margin-top: 5px;
-    }
-    .info {
-      font-size: 0.75rem;
-      color: #888;
-      margin-top: 2px;
-    }
-    .controls {
-      width: 100%;
-      max-width: 320px;
-      display: flex;
-      flex-direction: column;
-      /* Stack controls vertically */
-      align-items: center;
-      margin-bottom: 20px;
-      gap: 10px;
-      transition: max-width 0.3s;
-    }
-    .control-row {
-      display: flex;
-      width: 100%;
-      gap: 10px;
+    /* --- Keypad View (Main) --- */
+    #view-main {
       justify-content: space-between;
     }
-    .id-input-group {
+    .main-header {
       display: flex;
-      width: 100%;
-      gap: 10px;
+      justify-content: space-between;
       align-items: center;
-      background: #333;
+      margin-bottom: 10px;
+      padding: 0 5px;
+    }
+    .status-indicator {
+      font-size: 0.9rem;
+      color: #888;
+      font-weight: bold;
+    }
+    .status-indicator.connected {
+      color: #28a745;
+    }
+    #settings-btn {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
       padding: 5px;
-      border-radius: 8px;
-    }
-    .id-input-group label {
       color: #aaa;
-      font-size: 0.9rem;
-      padding-left: 5px;
-      white-space: nowrap;
-    }
-    #can-id-input {
-      background: #222;
-      border: 1px solid #555;
-      color: white;
-      padding: 8px;
-      flex: 1;
-      border-radius: 4px;
-      text-align: center;
-      font-family: monospace;
-      font-size: 1rem;
-    }
-    #set-id-btn {
-      background: #e67e22;
-      color: white;
-      border: none;
-      padding: 8px 15px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-    #connect-btn {
-      flex: 2;
-      background: #007bff;
-      color: white;
-      border: none;
-      padding: 12px;
-      font-size: 1rem;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: bold;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-    }
-    #edit-mode-btn {
-      flex: 1;
-      background: #555;
-      color: #ddd;
-      border: none;
-      padding: 12px;
-      font-size: 0.9rem;
-      border-radius: 8px;
-      cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     }
     #keypad {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 15px;
-      width: 100%;
-      max-width: 320px;
-      transition: max-width 0.3s;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(4, 1fr);
+        gap: 10px;
+        flex-grow: 1; /* Fill remaining space */
+        width: 100%;
+        max-width: 600px;
+        align-self: center;
     }
+    
     .key-btn {
-      aspect-ratio: 1;
       background: #333;
       border: 2px solid #555;
       border-radius: 12px;
       color: white;
-      font-size: 1.1rem;
+      font-size: 1.5rem; /* Larger font */
       font-weight: bold;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.1s;
       display: flex;
       justify-content: center;
       align-items: center;
       flex-direction: column;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
       position: relative;
-      padding: 5px;
       text-align: center;
+      width: 100%;
+      height: 100%; /* Fill grid cell */
     }
     .key-btn:active {
       transform: scale(0.98);
@@ -150,13 +95,106 @@
       background: #006000;
       border-color: #00ff00;
       color: #00ff00;
-      box-shadow: 0 0 10px rgba(0, 255, 0, 0.4);
+      box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
     }
+    .key-btn span.sub {
+      font-size: 0.8rem;
+      color: #bbb;
+      margin-top: 5px;
+      font-weight: normal;
+    }
+    .key-btn.active span.sub {
+      color: #8f8;
+    }
+    /* --- Settings View --- */
+    #view-settings {
+      align-items: center;
+      background: #222; /* Slightly different bg for context */
+    }
+    .settings-header {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        margin-bottom: 30px;
+        border-bottom: 1px solid #444;
+        padding-bottom: 10px;
+    }
+    .back-btn {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: #fff;
+        cursor: pointer;
+        padding: 5px 15px;
+    }
+    .settings-title {
+        flex-grow: 1;
+        text-align: center;
+        font-size: 1.2rem;
+        font-weight: bold;
+    }
+    .settings-group {
+        width: 100%;
+        max-width: 320px;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    .control-row, .id-input-group {
+        display: flex;
+        width: 100%;
+        gap: 10px;
+    }
+    .id-input-group {
+        align-items: center;
+        background: #333;
+        padding: 10px;
+        border-radius: 8px;
+    }
+    
+    /* Reused styles */
+    #connect-btn, #edit-mode-btn, #set-id-btn {
+        padding: 15px; /* Larger touch targets */
+        font-size: 1rem;
+        border-radius: 8px;
+        border: none;
+        color: white;
+        cursor: pointer;
+        font-weight: bold; 
+    }
+    #connect-btn { background: #007bff; flex: 2; }
+    #edit-mode-btn { background: #555; flex: 1; }
+    #set-id-btn { background: #e67e22; padding: 10px 20px;}
+    
+    #can-id-input {
+        background: #222;
+        border: 1px solid #555;
+        color: white;
+        padding: 10px;
+        flex: 1;
+        border-radius: 4px;
+        text-align: center;
+        font-family: monospace;
+        font-size: 1.2rem;
+    }
+    label { color: #ccc; }
+    #log {
+      margin-top: auto; /* Push to bottom */
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.7rem;
+      color: #00ff00;
+      width: 100%;
+      height: 100px;
+      overflow-y: auto;
+      background: #000;
+      padding: 5px;
+      border: 1px solid #444;
+      box-sizing: border-box;
+    }
+    /* Edit Mode Styling */
     .editing .key-btn {
       border-color: #f39c12 !important;
       background: #444 !important;
-      color: white !important;
-      box-shadow: none !important;
     }
     .key-btn input {
       display: none;
@@ -169,68 +207,47 @@
       padding: 4px;
       border-radius: 4px;
     }
-    .editing .key-btn input {
-      display: block;
-    }
-    .editing .key-btn .btn-label {
-      display: none;
-    }
-    .key-btn span.sub {
-      font-size: 0.7rem;
-      color: #bbb;
-      margin-top: 8px;
-      font-weight: normal;
-    }
-    .key-btn.active span.sub {
-      color: #8f8;
-    }
-    #log {
-      margin-top: 25px;
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 0.75rem;
-      color: #00ff00;
-      width: 100%;
-      max-width: 320px;
-      height: 150px;
-      overflow-y: auto;
-      background: #000;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid #444;
-      box-sizing: border-box;
-      transition: max-width 0.3s;
-    }
-    @media (min-width: 500px) and (orientation: landscape) {
-      .controls,
-      #keypad,
-      #log {
-        max-width: 600px;
-      }
-      #keypad {
-        grid-template-columns: repeat(4, 1fr);
-      }
-    }
+    .editing .key-btn input { display: block; }
+    .editing .key-btn .btn-label { display: none; }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>CAN Keypad</h1>
-    <div class="version">Ver 1.4</div>
-    <div class="info">Auto Reconnect Sync</div>
-  </div>
-  <div class="controls">
-    <div class="control-row">
-      <button id="connect-btn" onclick="connect()">🔵 Connect BLE</button>
-      <button id="edit-mode-btn" onclick="toggleEditMode()">✏️ Edit Names</button>
+  <!-- KEYPAD VIEW -->
+  <div id="view-main" class="view-container active">
+    <div class="main-header">
+      <div id="status-display" class="status-indicator">🔴 Disconnected</div>
+      <button id="settings-btn" onclick="showSettings()">⚙️</button>
     </div>
-    <div class="id-input-group">
-      <label>CAN ID (Hex): 0x</label>
-      <input type="text" id="can-id-input" value="100" maxlength="3">
-      <button id="set-id-btn" onclick="setCanId()">SET</button>
-    </div>
+    <div id="keypad"></div>
   </div>
-  <div id="keypad"></div>
-  <pre id="log">Logs will appear here...</pre>
+  <!-- SETTINGS VIEW -->
+  <div id="view-settings" class="view-container">
+    <div class="settings-header">
+        <button class="back-btn" onclick="showMain()">‹ Back</button>
+        <div class="settings-title">Settings</div>
+        <div style="width: 50px;"></div> <!-- Spacer for center alignment -->
+    </div>
+    <div class="settings-group">
+        <div class="control-row">
+            <button id="connect-btn" onclick="connect()">🔵 Connect BLE</button>
+        </div>
+        
+        <div class="control-row">
+             <button id="edit-mode-btn" onclick="toggleEditMode()">✏️ Edit Names</button>
+        </div>
+        <div class="id-input-group">
+            <label>ID(Hex): 0x</label>
+            <input type="text" id="can-id-input" value="100" maxlength="3">
+            <button id="set-id-btn" onclick="setCanId()">SET</button>
+        </div>
+        
+        <div style="color: #666; font-size: 0.8rem; text-align: center; margin-top: 10px;">
+            Ver 1.5 (Split Mode)<br>
+            M5Atom S3 CAN
+        </div>
+    </div>
+    <pre id="log">Logs...</pre>
+  </div>
   <script>
     const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
     const RX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
@@ -240,10 +257,39 @@
     let btnLabels = JSON.parse(localStorage.getItem("btnLabels")) ||
       Array.from({ length: 8 }, (_, i) => `BTN ${i + 1}`);
     let btnStates = Array(8).fill(false);
+    let isConnected = false;
+    /* --- View Navigation --- */
+    function showSettings() {
+        document.getElementById("view-main").classList.remove("active");
+        document.getElementById("view-settings").classList.add("active");
+    }
+    function showMain() {
+        if(isEditMode) toggleEditMode(); // Exit edit mode if leaving
+        document.getElementById("view-settings").classList.remove("active");
+        document.getElementById("view-main").classList.add("active");
+    }
     function log(t) {
       const el = document.getElementById("log");
       const time = new Date().toLocaleTimeString().split(' ')[0];
       el.textContent = `[${time}] ${t}\n` + el.textContent.substring(0, 1000);
+    }
+    
+    function updateStatus(connected) {
+        isConnected = connected;
+        const ind = document.getElementById("status-display");
+        const btn = document.getElementById("connect-btn");
+        
+        if(connected) {
+            ind.textContent = "🟢 Connected";
+            ind.classList.add("connected");
+            btn.textContent = "🟢 Connected";
+            btn.style.background = "#28a745";
+        } else {
+            ind.textContent = "🔴 Disconnected";
+            ind.classList.remove("connected");
+            btn.textContent = "🔵 Connect BLE";
+            btn.style.background = "#007bff";
+        }
     }
     async function connect() {
       try {
@@ -252,24 +298,34 @@
           optionalServices: [SERVICE_UUID]
         });
         const gatt = await dev.gatt.connect();
+        dev.addEventListener('gattserverdisconnected', () => {
+             log("Disconnected");
+             updateStatus(false);
+        });
+        
         const svc = await gatt.getPrimaryService(SERVICE_UUID);
         rxChar = await svc.getCharacteristic(RX_UUID);
         const txChar = await svc.getCharacteristic(TX_UUID);
-        // Notification setup is crucial for sync
         await txChar.startNotifications();
         txChar.addEventListener('characteristicvaluechanged', handleNotifications);
-        document.getElementById("connect-btn").textContent = "🟢 Connected";
-        document.getElementById("connect-btn").style.background = "#28a745";
-        log("BLE connected - Waiting for Sync...");
+        updateStatus(true);
+        log("BLE Ready");
+        
+        // Auto-switch to keypad after short delay
+        setTimeout(() => {
+            showMain();
+        }, 800);
+        
       } catch (e) {
-        log("BLE ERROR: " + e);
+        log("Err: " + e);
+        updateStatus(false);
       }
     }
     function handleNotifications(event) {
       const value = event.target.value;
       const decoder = new TextDecoder('utf-8');
       const msg = decoder.decode(value);
-      log("Rx: " + msg);
+      // log("Rx: " + msg); // Optional: reduce spam
       if (msg.startsWith("STATE=")) {
         const states = msg.substring(6).split(',');
         if (states.length >= 8) {
@@ -279,12 +335,12 @@
               updateBtnVisual(i + 1, btnStates[i]);
             }
           });
-          log(">> Synced States");
         }
       }
     }
     function updateBtnVisual(n, isActive) {
       const btn = document.getElementById('btn-' + n);
+      if(!btn) return;
       if (isActive) {
         btn.classList.add('active');
       } else {
@@ -293,32 +349,36 @@
     }
     function send(n) {
       if (isEditMode) return;
+      
       const btnIndex = n - 1;
       const newState = !btnStates[btnIndex];
-      btnStates[btnIndex] = newState;
+      // Optimistic upadate
+      btnStates[btnIndex] = newState; 
       updateBtnVisual(n, newState);
       if (rxChar) {
         const cmd = `${n}=${newState ? 1 : 0}`;
         rxChar.writeValue(new TextEncoder().encode(cmd))
-          .catch(e => log("TX ERR: " + e));
-        log(`Tx: ${cmd} (${btnLabels[btnIndex]})`);
+          .catch(e => {
+              log("TX ERR");
+          });
       }
     }
     function setCanId() {
       const input = document.getElementById("can-id-input");
       let val = input.value.trim();
-      // Simple validation for hex
       if (/^[0-9A-Fa-f]+$/.test(val)) {
         if (rxChar) {
           const cmd = `ID=${val}`;
           rxChar.writeValue(new TextEncoder().encode(cmd))
-            .catch(e => log("TX ERR: " + e));
+            .catch(e => log("TX ERR"));
           log(`Set ID: 0x${val}`);
+          alert(`CAN ID set to 0x${val}`); // Feedback
         } else {
           log("Not connected");
+          alert("Not connected");
         }
       } else {
-        log("Invalid Hex ID");
+        alert("Invalid Hex ID");
       }
     }
     function toggleEditMode() {
@@ -329,21 +389,37 @@
         container.classList.add("editing");
         editBtn.textContent = "💾 Save Names";
         editBtn.style.background = "#28a745";
-        editBtn.style.color = "white";
+        
+        // Solution: When Edit Mode is active, we force switch to Main View
+        showMain();
+        
+        // Change Gear Button to Save Button
+        const gearBtn = document.getElementById("settings-btn");
+        gearBtn.textContent = "💾";
+        gearBtn.onclick = toggleEditMode; // Clicking save toggles it off
+        
       } else {
+        // Saving
         const inputs = document.querySelectorAll(".key-btn input");
         inputs.forEach((input, i) => {
           btnLabels[i] = input.value;
           const labelSpan = document.getElementById(`label-${i + 1}`);
-          labelSpan.textContent = input.value;
+          if(labelSpan) labelSpan.textContent = input.value;
         });
         localStorage.setItem("btnLabels", JSON.stringify(btnLabels));
         container.classList.remove("editing");
         editBtn.textContent = "✏️ Edit Names";
         editBtn.style.background = "#555";
-        editBtn.style.color = "#ddd";
+        
+        // Restore Gear Button
+        const gearBtn = document.getElementById("settings-btn");
+        gearBtn.textContent = "⚙️";
+        gearBtn.onclick = showSettings;
+        
+        alert("Names Saved");
       }
     }
+    /* Init Keypad */
     const container = document.getElementById("keypad");
     for (let i = 1; i <= 8; i++) {
       const b = document.createElement("div");
@@ -356,7 +432,7 @@
     <span id="label-${i}" class="btn-label">${btnLabels[i - 1]}</span>
     <input type="text" value="${btnLabels[i - 1]}" maxlength="8" onclick="event.stopPropagation()">
     <span class="sub">Byte ${i - 1}</span>
-  `;
+      `;
       container.appendChild(b);
     }
   </script>
