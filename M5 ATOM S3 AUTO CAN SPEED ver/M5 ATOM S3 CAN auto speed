@@ -1,0 +1,320 @@
+import M5
+from M5 import *
+import time
+from unit import CANUnit
+import bluetooth
+from micropython import const
+# Version 1.0 (Official Release)
+#
+# --- CAN ID 変更方法 ---
+# 送信CAN IDを別のアドレスに変更したい場合は、以下の `can_tx_id` の値を変更してください。
+# 表記は16進数(0x...)です。
+# 例: 0x100 -> 0x200
+can_tx_id = 0x100
+DEVICE_NAME = "M5AtomS3_CAN"
+FIFO = 0
+can_state = bytearray(8)
+can_error = False
+UART_UUID = bluetooth.UUID("6e400001-b5a3-f393-e0a9-e50e24dcca9e")
+UART_TX   = bluetooth.UUID("6e400003-b5a3-f393-e0a9-e50e24dcca9e")
+UART_RX   = bluetooth.UUID("6e400002-b5a3-f393-e0a9-e50e24dcca9e")
+_IRQ_CENTRAL_CONNECT    = const(1)
+_IRQ_CENTRAL_DISCONNECT = const(2)
+_IRQ_GATTS_WRITE        = const(3)
+class BLEUART:
+    def __init__(self, ble):
+        self._ble = ble
+        self._ble.active(True)
+        self._ble.irq(self._irq)
+        ((self._tx, self._rx),) = self._ble.gatts_register_services([
+            (UART_UUID, (
+                (UART_TX, bluetooth.FLAG_NOTIFY),
+                (UART_RX, bluetooth.FLAG_WRITE),
+            )),
+        ])
+        self._connections = set()
+        self._rx_cb = None
+        self._adv_payload = self._get_adv_payload(DEVICE_NAME)
+        self._advertise()
+    def _get_adv_payload(self, name):
+        name_bytes = name.encode()
+        return b'\x02\x01\x06' + bytes([len(name_bytes)+1, 0x09]) + name_bytes
+    def _advertise(self):
+        try:
+            self._ble.gap_advertise(100_000, self._adv_payload)
+            print("BLE advertising...")
+        except:
+            pass
+    def _irq(self, event, data):
+        if event == _IRQ_CENTRAL_CONNECT:
+            conn_handle, _, _ = data
+            self._connections.add(conn_handle)
+            print("BLE connected. Handle:", conn_handle)
+            time.sleep(0.5)
+            self.send_state_sync()
+        elif event == _IRQ_CENTRAL_DISCONNECT:
+            conn_handle, _, _ = data
+            if conn_handle in self._connections:
+                self._connections.remove(conn_handle)
+            print("BLE disconnected")
+            self._advertise()
+        elif event == _IRQ_GATTS_WRITE:
+            if self._rx_cb:
+                self._rx_cb(self._ble.gatts_read(self._rx))
+    def send(self, data):
+        for conn_handle in self._connections:
+            try:
+                # Debug output
+                # print("BLE Sending to:", conn_handle, data)
+                self._ble.gatts_notify(conn_handle, self._tx, data)
+                print("BLE TX OK")
+            except Exception as e:
+                print("BLE TX ERR:", e)
+    def send_state_sync(self):
+        msg = "STATE=" + ",".join(str(b) for b in can_state)
+        print("Preparing Sync Msg:", msg)
+        self.send(msg.encode())
+    def send_status(self, is_err):
+        st = "CAN_ERR" if is_err else "CAN_OK"
+        msg = f"STATUS={st}"
+        # print("Heartbeat:", msg)
+        self.send(msg.encode())
+    def on_rx(self, cb):
+        self._rx_cb = cb
+# --- Auto Baud Rate Detection ---
+# --- Auto Baud Rate Detection ---
+def detect_baudrate():
+    M5.Display.clear()
+    M5.Display.setCursor(0, 0)
+    M5.Display.setTextSize(2)
+    M5.Display.setTextColor(0xFFFF)
+    M5.Display.print("Detecting\nBaudrate...")
+    print("Auto-Detecting Baudrate...")
+    
+    # Candidates list
+    candidates = [1000000, 500000]
+    
+    # Retry logic: Try more times, slightly longer wait
+    for attempt in range(5): 
+        print(f"--- Attempt {attempt+1} ---")
+        for rate in candidates:
+            print(f"Scanning {rate}...")
+            can = None
+            try:
+                # 1. Close any existing (just in case)
+                # But 'can' is local. Maybe previous loop left something?
+                # We trust deinit() at end of loop.
+                
+                # 2. Init
+                can = CANUnit(id=0, port=(1, 2), mode=CANUnit.NORMAL, baudrate=rate)
+                
+                # 3. Listen
+                # 500kbps sends slower, maybe 500ms is on edge if traffic is sparse?
+                # Increase to 1000ms per check to be safe.
+                start = time.ticks_ms()
+                detected = False
+                
+                while time.ticks_diff(time.ticks_ms(), start) < 1000:
+                    try:
+                        if can.any(0) > 0:
+                            # Verify it's not a garbage frame?
+                            # Just presence is enough for now.
+                            detected = True
+                            print(f"  -> Msg Found! Count={can.any(0)}")
+                            break
+                    except:
+                        pass
+                    time.sleep_ms(50)
+                
+                # 4. Cleanup current test instance
+                if hasattr(can, 'deinit'):
+                    can.deinit()
+                
+                # 5. Result
+                if detected:
+                    print(f"DETECTED: {rate}")
+                    return rate
+                    
+            except Exception as e:
+                print(f"Err {rate}: {e}")
+                # Ensure cleanup on error
+                if can: 
+                    try: 
+                        if hasattr(can, 'deinit'): can.deinit() 
+                    except: pass
+            
+            # Small pause between rates to let bus settle?
+            time.sleep_ms(200)
+            
+    print("Detection Failed -> Defaulting to 1000k")
+    return 1000000 # Default default
+def on_ble_rx(data):
+    try:
+        cmd = data.decode().strip()
+        print("BLE RX:", cmd)
+        updated = False
+        if '=' in cmd: 
+            parts = cmd.split('=')
+            # Check for ID command
+            if parts[0] == "ID":
+                try:
+                    new_id = int(parts[1], 16) # Parse as Hex
+                    global can_tx_id
+                    can_tx_id = new_id
+                    print("New CAN ID:", hex(can_tx_id))
+                    # Optional: Send sync to confirm?
+                except:
+                    print("Invalid ID Fmt")
+            elif len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                idx = int(parts[0]) - 1
+                val = int(parts[1])
+                if 0 <= idx < 8:
+                    # Version 2.7: Allow arbitrary byte value
+                    if can_state[idx] != val:
+                        can_state[idx] = val & 0xFF # Ensure byte range
+                        updated = True
+        elif cmd.isdigit(): 
+            idx = int(cmd) - 1
+            if 0 <= idx < 8:
+                can_state[idx] ^= 1
+                updated = True
+        if updated:
+            print("CAN TX:", list(can_state))
+            can.send(id=can_tx_id, data=can_state)
+            uart.send_state_sync()
+    except Exception as e:
+        print("RX ERR:", e)
+M5.begin()
+print("BOOT Ver 1.1 (Auto Baud)")
+# Run Detection
+detected_rate = detect_baudrate()
+print(f"Using Baudrate: {detected_rate}")
+# Init Main CAN
+try:
+    can = CANUnit(id=0, port=(1,2), mode=CANUnit.NORMAL, baudrate=detected_rate)
+    print("CAN OK")
+except Exception as e:
+    print("CAN Init Err:", e)
+ble = bluetooth.BLE()
+uart = BLEUART(ble)
+uart.on_rx(on_ble_rx)
+uart.on_rx(on_ble_rx)
+M5.Display.clear()
+M5.Display.setCursor(0, 0)
+M5.Display.setTextSize(2)
+M5.Display.setTextColor(0xFFFFFF)
+M5.Display.print("READY\n")
+# Show detected baudrate at bottom
+M5.Display.setCursor(0, 64) # Move to middle/bottom
+M5.Display.setTextSize(3) # Larger font
+if detected_rate >= 1000000:
+    M5.Display.setTextColor(0x07E0) # GREEN for 1M
+    M5.Display.print("1M")
+else:
+    M5.Display.setTextColor(0xF800) # RED (or different color) for 500k
+    # User asked for color change. Let's use Cyan or Yellow for 500k to distinguish from error red?
+    # User said "Change color". 
+    # Green is standard. Let's use YELLOW (0xFFE0) or CYAN (0x07FF) for 500k.
+    # Actually, user's connection status error is RED. So let's use MAGENTA or CYAN.
+    # User used Green for "Locked" in test.
+    # Let's use GREEN for 1M and YELLOW for 500k to differentiate.
+    M5.Display.setTextColor(0xFFE0)
+    M5.Display.print("500k")
+print("READY")
+last_display_update = 0
+DISPLAY_INTERVAL = 500
+def update_lcd():
+    # Use fillScreen instead of clear to avoid issues
+    M5.Display.clear()
+    M5.Display.setCursor(0, 0)
+    M5.Display.setTextSize(2)
+    
+    # CAN Status -> GREEN (0x07E0)
+    if can_error:
+        M5.Display.setTextColor(0xF800, 0) # RED
+        M5.Display.print("CAN: ERR\n")
+    else:
+        M5.Display.setTextColor(0x07E0, 0) # GREEN
+        M5.Display.print("CAN: OK \n")
+        
+    # BLE Status -> YELLOW (0xFFE0) 
+    if len(uart._connections) > 0:
+        M5.Display.setTextColor(0xFFE0, 0) # YELLOW
+        M5.Display.print("BLE: ON \n")
+    else:
+        M5.Display.setTextColor(0x7BEF, 0) # GREY
+        M5.Display.print("BLE: -- \n")
+        
+    # ID -> WHITE (0xFFFF)
+    M5.Display.setTextColor(0xFFFF, 0) # WHITE
+    M5.Display.print(f"ID:{hex(can_tx_id)}\n")
+    
+    # Speed -> Bottom Large
+    M5.Display.setCursor(0, 64)
+    M5.Display.setTextSize(3)
+    if detected_rate >= 1000000:
+        M5.Display.setTextColor(0x07E0) # GREEN
+        M5.Display.print("1M")
+    else:
+        M5.Display.setTextColor(0xFFE0) # YELLOW (User Req: Change Color)
+        M5.Display.print("500k")
+last_can_send_time = 0
+CAN_SEND_INTERVAL = 200  # 5Hz
+last_ble_sync_time = 0
+BLE_SYNC_INTERVAL = 1000 # 1Hz (Heartbeat for UI)
+while True:
+    M5.update()
+    # Cyclic CAN Transmission (Heartbeat)
+    now = time.ticks_ms()
+    if time.ticks_diff(now, last_can_send_time) > CAN_SEND_INTERVAL:
+        try:
+            can.send(id=can_tx_id, data=can_state)
+            can_error = False
+        except Exception as e:
+            print("CAN Send Err:", e)
+            can_error = True
+        last_can_send_time = now
+    # Cyclic BLE Sync (UI Refresh Heartbeat)
+    if time.ticks_diff(now, last_ble_sync_time) > BLE_SYNC_INTERVAL:
+        # Prevent "No change" spam logs if you prefer, but for now we keep it to be sure
+        # Prevent "No change" spam logs if you prefer, but for now we keep it to be sure
+        uart.send_state_sync() # Button States
+        uart.send_status(can_error) # Heartbeat & CAN Status
+        uart.send_status(can_error) # Heartbeat & CAN Status
+        last_ble_sync_time = now
+    # LCD Update
+    if time.ticks_diff(now, last_display_update) > DISPLAY_INTERVAL:
+        try:
+            update_lcd()
+        except Exception as e:
+            print("LCD Err:", e)
+        last_display_update = now
+    
+    if can.any(FIFO):
+        try:
+            msg = can.recv(FIFO)
+            if msg:
+                can_id, is_ext, rtr, dlc, rx_data = msg
+                # 外部からの更新 (Current TX ID) を監視
+                if can_id == can_tx_id:
+                    print(">> CAN RX MATCH", hex(can_id))
+                    
+                    if rx_data and len(rx_data) >= 8:
+                        changed = False
+                        for i in range(8):
+                            new_val = 1 if rx_data[i] > 0 else 0
+                            if can_state[i] != new_val:
+                                can_state[i] = new_val
+                                changed = True
+                        
+                        if changed:
+                            print("State Changed -> Syncing")
+                            uart.send_state_sync()
+                        else:
+                            # デバッグ用：変わってなくても受信したことは表示
+                            # print("No change in state")
+                            pass
+        except Exception as e:
+            print("CAN Logic Err:", e)
+            
+    time.sleep(0.01)
