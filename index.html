@@ -408,7 +408,7 @@
     <div id="connect-overlay">
       <!-- Changed to call handleStartConnect() for composite action -->
       <button id="start-btn" onclick="handleStartConnect()">CONNECT<br>START</button>
-      <div style="margin-top:20px; color:#666; font-size:0.8rem;">Ver 1.1 (Auto Baud + WakeLock)</div>
+      <div style="margin-top:20px; color:#666; font-size:0.8rem;">Ver 1.1 (Debug: No WakeLock)</div>
     </div>
     <div id="keypad"></div>
   </div>
@@ -849,7 +849,8 @@
       // 1. Enter Fullscreen (User Gesture #1)
       enterFullscreen();
       // 2. Request Wake Lock (User Gesture #2 - required for Security)
-      await requestWakeLock();
+      // DEBUG: Commenting out to verify if this is the cause of SecurityError
+      // await requestWakeLock();
       // 3. Start BLE Connect
       await connect();
     }
