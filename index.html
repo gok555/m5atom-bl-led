@@ -1,4 +1,4 @@
-<!-- Version: 1.0 (Official Release) -->
+<!-- Version: 1.2 (WakeLock Fix) -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -408,6 +408,7 @@
     <div id="connect-overlay">
       <!-- Changed to call handleStartConnect() for composite action -->
       <button id="start-btn" onclick="handleStartConnect()">CONNECT<br>START</button>
+      <div style="margin-top:20px; color:#666; font-size:0.8rem;">Ver 1.2 (WakeLock Fix)</div>
     </div>
     <div id="keypad"></div>
   </div>
@@ -481,7 +482,7 @@
         <input type="file" id="import-file" style="display:none" accept=".json" onchange="handleFileSelect(this)">
       </div>
       <div style="color: #666; font-size: 0.8rem; text-align: center; margin-top: 10px;">
-        Ver 1.0 (Official Release)<br>
+        Ver 1.2 (WakeLock Fix)<br>
         M5Atom S3 CAN
       </div>
     </div>
@@ -701,6 +702,27 @@
         closeIconPicker();
       }
     }
+    /* --- Screen Wake Lock Logic (Ver 1.2 Fixed) --- */
+    let wakeLock = null;
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          console.log('Wake Lock is active!');
+          wakeLock.addEventListener('release', () => {
+            console.log('Wake Lock released');
+          });
+        }
+      } catch (err) {
+        console.error(`Wake Lock Error: ${err.name}, ${err.message}`);
+      }
+    }
+    // Re-acquire lock when visibility changes (if it was dropped)
+    document.addEventListener('visibilitychange', async () => {
+      if (wakeLock !== null && document.visibilityState === 'visible') {
+        await requestWakeLock();
+      }
+    });
     function initAudio() {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -825,10 +847,13 @@
     // --- CONNECT FLOW (Composite Action) ---
     async function handleStartConnect() {
       initAudio();
-      // 1. Enter Fullscreen (User Gesture #1)
+      // 1. Enter Fullscreen (User Gesture)
       enterFullscreen();
-      // 2. Start BLE Connect (User Gesture #1 continues usually ok in async but safer to do synchronous start if possible, 
-      // but BLE requires promise. Both share the same 'click' event context usually.)
+      // 2. Request Wake Lock (User Gesture)
+      // Note: We do NOT await this. We let it fire in the background.
+      // Awaiting it might delay the 'connect()' call enough to lose the "User Gesture" token required for popups.
+      requestWakeLock();
+      // 3. Start BLE Connect (User Gesture - Must happen immediately)
       await connect();
     }
     async function connect() {
