@@ -1,4 +1,4 @@
-<!-- Version: v3.3 (Icon Support) -->
+<!-- Version: 1.0 (Official Release) -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -481,7 +481,7 @@
         <input type="file" id="import-file" style="display:none" accept=".json" onchange="handleFileSelect(this)">
       </div>
       <div style="color: #666; font-size: 0.8rem; text-align: center; margin-top: 10px;">
-        Ver 3.3 (Icon Support)<br>
+        Ver 1.0 (Official Release)<br>
         M5Atom S3 CAN
       </div>
     </div>
@@ -540,6 +540,10 @@
     // --- Watchdog ---
     let watchdogTimer = null;
     const WATCHDOG_TIMEOUT = 3500; // 3.5s (Device sends every 1s)
+    // --- CAN ID 変更方法 ---
+    // WebアプリのデフォルトCAN IDを変更したい場合は、以下の `canIdVal` の値を変更してください。
+    // 表記は16進数から "0x" を除いた文字列です。
+    // 例: "100" -> "200"
     let canIdVal = localStorage.getItem("canIdVal") || "100";
     /* --- Config UI Generation --- */
     function renderConfigList() {
