@@ -388,7 +388,8 @@
         <div id="can-status-display" class="status-indicator"
           style="display:none; font-size:0.8rem; border-left:1px solid #444; padding-left:10px;">CAN: --</div>
       </div>
-      <div style="display:flex; gap:15px;">
+      <div style="display:flex; gap:15px; align-items:center;">
+        <button id="main-sound-btn" class="header-btn" onclick="toggleSoundMain()" style="font-size:1.2rem;">🔊</button>
         <button class="header-btn" onclick="toggleFullscreen()" title="Fullscreen">⛶</button>
         <button id="settings-btn" class="header-btn" onclick="showSettings()">⚙️</button>
       </div>
@@ -517,7 +518,7 @@
       Array(8).fill('big');
     // Ver 3.1: Feedback
     let cfgVibe = JSON.parse(localStorage.getItem("cfgVibe")) !== false; // Default true
-    let cfgSound = JSON.parse(localStorage.getItem("cfgSound")) || false; // Default false
+    let cfgSound = JSON.parse(localStorage.getItem("cfgSound")) !== false; // Default true (Changed from false)
     // Audio
     let audioCtx = null;
     let btnColors = JSON.parse(localStorage.getItem("btnColors")) ||
@@ -758,11 +759,13 @@
         // Show Keypad, Hide Overlay
         overlay.style.display = "none";
         keypad.classList.add("visible");
+        document.getElementById("main-toolbar").style.display = "flex";
         // Show Disconnect option in settings
         discRow.style.display = "flex";
         // Start waiting for heartbeat
         resetWatchdog();
         document.getElementById("can-status-display").style.display = "block";
+        updateMainSoundIcon();
       } else {
         ind.textContent = "🔴 Disconnected";
         ind.classList.remove("connected");
@@ -770,6 +773,7 @@
         // Hide Keypad, Show Overlay
         overlay.style.display = "flex";
         keypad.classList.remove("visible");
+        document.getElementById("main-toolbar").style.display = "none";
         // Hide Disconnect option
         discRow.style.display = "none";
         document.getElementById("can-status-display").style.display = "none";
@@ -1092,6 +1096,19 @@
     renderConfigList();
     // Init Status (Show Overlay)
     updateStatus(false);
+    function updateMainSoundIcon() {
+      const btn = document.getElementById("main-sound-btn");
+      if (btn) {
+        btn.innerHTML = cfgSound ? "🔊" : "🔇";
+        btn.style.color = cfgSound ? "#0f0" : "#888";
+      }
+    }
+    function toggleSoundMain() {
+      setSound(!cfgSound);
+      updateMainSoundIcon();
+    }
+    // Update icon on load
+    updateMainSoundIcon();
   </script>
   <!-- Icon Picker Overlay -->
   <div id="icon-picker-overlay"
