@@ -1,4 +1,4 @@
-<!-- Version: 1.1 (Auto Baud + WakeLock) -->
+<!-- Version: 1.0 (Official Release) -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -408,7 +408,6 @@
     <div id="connect-overlay">
       <!-- Changed to call handleStartConnect() for composite action -->
       <button id="start-btn" onclick="handleStartConnect()">CONNECT<br>START</button>
-      <div style="margin-top:20px; color:#666; font-size:0.8rem;">Ver 1.1 (Debug: No WakeLock)</div>
     </div>
     <div id="keypad"></div>
   </div>
@@ -482,7 +481,7 @@
         <input type="file" id="import-file" style="display:none" accept=".json" onchange="handleFileSelect(this)">
       </div>
       <div style="color: #666; font-size: 0.8rem; text-align: center; margin-top: 10px;">
-        Ver 1.1 (Auto Baud + WakeLock)<br>
+        Ver 1.0 (Official Release)<br>
         M5Atom S3 CAN
       </div>
     </div>
@@ -492,11 +491,6 @@
     const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
     const RX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
     const TX_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
-    // --- CAN ID 変更方法 ---
-    // WebアプリのデフォルトCAN IDを変更したい場合は、以下の `canIdVal` の値を変更してください。
-    // 表記は16進数から "0x" を除いた文字列です。
-    // 例: "100" -> "200"
-    let canIdVal = localStorage.getItem("canIdVal") || "100";
     /* --- ICONS (Ver 3.3) --- */
     const ICONS = {
       none: null,
@@ -543,29 +537,14 @@
     let isConnected = false;
     // --- Pulse Logic Variables ---
     let lastPulseTimes = Array(8).fill(0);
+    // --- Watchdog ---
     let watchdogTimer = null;
     const WATCHDOG_TIMEOUT = 3500; // 3.5s (Device sends every 1s)
-    // --- Screen Wake Lock (Ver 1.1) ---
-    let wakeLock = null;
-    async function requestWakeLock() {
-      try {
-        if ('wakeLock' in navigator) {
-          wakeLock = await navigator.wakeLock.request('screen');
-          console.log('Wake Lock is active!');
-          wakeLock.addEventListener('release', () => {
-            console.log('Wake Lock released');
-          });
-        }
-      } catch (err) {
-        console.error(`Wake Lock Error: ${err.name}, ${err.message}`);
-      }
-    }
-    // Re-acquire on visibility change
-    document.addEventListener('visibilitychange', async () => {
-      if (wakeLock !== null && document.visibilityState === 'visible') {
-        await requestWakeLock();
-      }
-    });
+    // --- CAN ID 変更方法 ---
+    // WebアプリのデフォルトCAN IDを変更したい場合は、以下の `canIdVal` の値を変更してください。
+    // 表記は16進数から "0x" を除いた文字列です。
+    // 例: "100" -> "200"
+    let canIdVal = localStorage.getItem("canIdVal") || "100";
     /* --- Config UI Generation --- */
     function renderConfigList() {
       const container = document.getElementById('config-list-container');
@@ -848,18 +827,14 @@
       initAudio();
       // 1. Enter Fullscreen (User Gesture #1)
       enterFullscreen();
-      // 2. Request Wake Lock (User Gesture #2 - required for Security)
-      // DEBUG: Commenting out to verify if this is the cause of SecurityError
-      // await requestWakeLock();
-      // 3. Start BLE Connect
+      // 2. Start BLE Connect (User Gesture #1 continues usually ok in async but safer to do synchronous start if possible, 
+      // but BLE requires promise. Both share the same 'click' event context usually.)
       await connect();
     }
     async function connect() {
       try {
         device = await navigator.bluetooth.requestDevice({
-          filters: [{
-            namePrefix: 'M5'
-          }],
+          filters: [{ name: "M5AtomS3_CAN" }],
           optionalServices: [SERVICE_UUID]
         });
         gattServer = await device.gatt.connect();
@@ -867,16 +842,15 @@
           log("Disconnected Event");
           updateStatus(false);
         });
-        const service = await gattServer.getPrimaryService(SERVICE_UUID);
-        rxChar = await service.getCharacteristic(RX_UUID);
-        txChar = await service.getCharacteristic(TX_UUID);
-        // Subscribe to notifications
+        const svc = await gattServer.getPrimaryService(SERVICE_UUID);
+        rxChar = await svc.getCharacteristic(RX_UUID);
+        txChar = await svc.getCharacteristic(TX_UUID);
         await txChar.startNotifications();
         txChar.addEventListener('characteristicvaluechanged', handleNotifications);
         updateStatus(true);
-      } catch (error) {
-        console.error(error);
-        alert("Connection Failed: " + error);
+        log("BLE Ready");
+      } catch (e) {
+        log("Err: " + e);
         updateStatus(false);
       }
     }
