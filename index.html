@@ -1137,264 +1137,278 @@
         rxChar.writeValue(new TextEncoder().encode(cmd))
           .catch(e => {
             // log("TX ERR");
-          }
+          });
+      }
     }
-      function reverseBits(b) {
-        b = b & 0xFF;
-        let r = 0;
-        for (let i = 0; i < 8; i++) {
-          if ((b >> i) & 1) {
-            r |= 1 << (7 - i);
-          }
-        }
-        return r;
-      }
-      // Ver 4.4: Delayed Send Logic
-      function sendStateDelayed(n, state) {
-        const idx = n - 1;
-        const delay = state ? btnOnDelays[idx] : btnOffDelays[idx];
-        if (delay > 0) {
-          setTimeout(() => {
-            sendState(n, state);
-          }, delay * 1000);
-        } else {
-          sendState(n, state);
+    function reverseBits(b) {
+      b = b & 0xFF;
+      let r = 0;
+      for (let i = 0; i < 8; i++) {
+        if ((b >> i) & 1) {
+          r |= 1 << (7 - i);
         }
       }
-      // --- Interaction Handlers ---
-      async function handleInteraction(n, e) {
-        if (e) e.preventDefault(); // Prevent double firing (touch+click)
-        const idx = n - 1;
-        // Ver 4.0: Check Auth
-        if (btnAuth[idx]) {
-          const authResult = await checkBiometricAuth();
-          if (!authResult) {
-            // Auth failed
-            alert("🔒 Authentication Failed");
-            return;
-          }
-        }
-        triggerFeedback();
-        const isMomentary = (btnModes[idx] === 'momentary');
-        if (isMomentary) {
-          triggerPulse(n);
-        } else {
-          // Toggle Mode
-          const newState = !btnStates[idx];
-          // Immediate visual update? No, user wants "Response Lag" -> Visual should match the delay
-          // sendStateDelayed handles visual update too via sendState
-          sendStateDelayed(n, newState);
-        }
-      }
-      function triggerPulse(n) {
-        const idx = n - 1;
-        // const now = Date.now();
-        // lastPulseTimes[idx] = now;
-        // Momentary: ON -> Delay -> SEND ON -> Wait 150ms -> SEND OFF (Delayed by OffDelay?)
-        // Current Logic: sendState(true); setTimeout(sendState(false), 150);
-        // With Delays:
-        // 1. Wait OnDelay
-        // 2. Send ON
-        // 3. Wait 150ms (Pulse Width)
-        // 4. Wait OffDelay
-        // 5. Send OFF
-        const onDelay = btnOnDelays[idx] * 1000;
-        const offDelay = btnOffDelays[idx] * 1000;
+      return r;
+    }
+    // Ver 4.4: Delayed Send Logic
+    function sendStateDelayed(n, state) {
+      const idx = n - 1;
+      const delay = state ? btnOnDelays[idx] : btnOffDelays[idx];
+      if (delay > 0) {
         setTimeout(() => {
-          sendState(n, true); // ON
-          setTimeout(() => {
-            // Only after Pulse Width, then apply OFF Delay
-            setTimeout(() => {
-              sendState(n, false); // OFF
-            }, offDelay);
-          }, 150);
-        }, onDelay);
-        lastPulseTimes[idx] = Date.now(); // Update timestamp immediately or after?
+          sendState(n, state);
+        }, delay * 1000);
+      } else {
+        sendState(n, state);
       }
-      function setCanId() {
-        const el = document.getElementById("can-id-input");
-        const val = el.value;
-        if (val.match(/^[0-9A-Fa-f]+$/)) {
-          log(`Set CAN ID: 0x${val}`);
-          localStorage.setItem("canIdVal", val);
-          canIdVal = val;
-          // Send command to device
-          if (rxChar) {
-            const cmd = `ID=${val}`;
-            rxChar.writeValue(new TextEncoder().encode(cmd))
-              .catch(e => log("TX ERR ID"));
-          }
-        } else {
-          alert("Invalid Hex ID");
+    }
+    // --- Interaction Handlers ---
+    async function handleInteraction(n, e) {
+      if (e) e.preventDefault(); // Prevent double firing (touch+click)
+      const idx = n - 1;
+      // Ver 4.0: Check Auth
+      if (btnAuth[idx]) {
+        const authResult = await checkBiometricAuth();
+        if (!authResult) {
+          // Auth failed
+          alert("🔒 Authentication Failed");
+          return;
         }
       }
-      /* --- Import / Export Logic --- */
-      function exportConfig() {
-        const config = {
-          version: "2.5",
-          timestamp: new Date().toISOString(),
-          btnLabels: btnLabels,
-          btnModes: btnModes,
-          btnColors: btnColors,
-          btnOnVals: btnOnVals,
-          btnOffVals: btnOffVals,
-          btnEndian: btnEndian,
-          btnIcons: btnIcons,
-          cfgVibe: cfgVibe,
-          btnIcons: btnIcons,
-          btnAuth: btnAuth, // Ver 4.0
-          btnOnDelays: btnOnDelays, // Ver 4.4
-          btnOffDelays: btnOffDelays, // Ver 4.4
-          cfgVibe: cfgVibe,
-          cfgSound: cfgSound,
-          canId: canIdVal
-        };
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config, null, 2));
-        const downloadAnchor = document.createElement('a');
-        downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", "m5_can_config.json");
-        document.body.appendChild(downloadAnchor);
-        downloadAnchor.click();
-        downloadAnchor.remove();
-        log("Config Exported");
+      triggerFeedback();
+      const isMomentary = (btnModes[idx] === 'momentary');
+      if (isMomentary) {
+        triggerPulse(n);
+      } else {
+        // Toggle Mode
+        const newState = !btnStates[idx];
+        // Immediate visual update? No, user wants "Response Lag" -> Visual should match the delay
+        // sendStateDelayed handles visual update too via sendState
+        sendStateDelayed(n, newState);
       }
-      function importConfig() {
-        document.getElementById('import-file').click();
+    }
+    function triggerPulse(n) {
+      const idx = n - 1;
+      // const now = Date.now();
+      // lastPulseTimes[idx] = now;
+      // Momentary: ON -> Delay -> SEND ON -> Wait 150ms -> SEND OFF (Delayed by OffDelay?)
+      // Current Logic: sendState(true); setTimeout(sendState(false), 150);
+      // With Delays:
+      // 1. Wait OnDelay
+      // 2. Send ON
+      // 3. Wait 150ms (Pulse Width)
+      // 4. Wait OffDelay
+      // 5. Send OFF
+      const onDelay = btnOnDelays[idx] * 1000;
+      const offDelay = btnOffDelays[idx] * 1000;
+      setTimeout(() => {
+        sendState(n, true); // ON
+        setTimeout(() => {
+          // Only after Pulse Width, then apply OFF Delay
+          setTimeout(() => {
+            sendState(n, false); // OFF
+          }, offDelay);
+        }, 150);
+      }, onDelay);
+      lastPulseTimes[idx] = Date.now(); // Update timestamp immediately or after?
+    }
+    function setCanId() {
+      const el = document.getElementById("can-id-input");
+      const val = el.value;
+      if (val.match(/^[0-9A-Fa-f]+$/)) {
+        log(`Set CAN ID: 0x${val}`);
+        localStorage.setItem("canIdVal", val);
+        canIdVal = val;
+        // Send command to device
+        if (rxChar) {
+          const cmd = `ID=${val}`;
+          rxChar.writeValue(new TextEncoder().encode(cmd))
+            .catch(e => log("TX ERR ID"));
+        }
+      } else {
+        alert("Invalid Hex ID");
       }
-      function handleFileSelect(input) {
-        const file = input.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          try {
-            const config = JSON.parse(e.target.result);
-            // Validation / Restoration
-            if (config.btnLabels && Array.isArray(config.btnLabels)) {
-              btnLabels = config.btnLabels;
-              localStorage.setItem("btnLabels", JSON.stringify(btnLabels));
-            }
-            if (config.btnModes && Array.isArray(config.btnModes)) {
-              btnModes = config.btnModes;
-              localStorage.setItem("btnModes", JSON.stringify(btnModes));
-            }
-            if (config.btnColors && Array.isArray(config.btnColors)) {
-              btnColors = config.btnColors;
-              localStorage.setItem("btnColors", JSON.stringify(btnColors));
-            }
-            if (config.btnOnVals && Array.isArray(config.btnOnVals)) {
-              btnOnVals = config.btnOnVals;
-              localStorage.setItem("btnOnVals", JSON.stringify(btnOnVals));
-            }
-            if (config.btnOffVals && Array.isArray(config.btnOffVals)) {
-              btnOffVals = config.btnOffVals;
-              localStorage.setItem("btnOffVals", JSON.stringify(btnOffVals));
-            }
-            if (config.btnEndian && Array.isArray(config.btnEndian)) {
-              btnEndian = config.btnEndian;
-              localStorage.setItem("btnEndian", JSON.stringify(btnEndian));
-            }
-            if (config.btnIcons && Array.isArray(config.btnIcons)) {
-              btnIcons = config.btnIcons;
-              localStorage.setItem("btnIcons", JSON.stringify(btnIcons));
-            }
-            if (config.btnAuth && Array.isArray(config.btnAuth)) { // Ver 4.0
-              btnAuth = config.btnAuth;
-              localStorage.setItem("btnAuth", JSON.stringify(btnAuth));
-            }
-            if (config.cfgVibe !== undefined) {
-              cfgVibe = config.cfgVibe;
-              localStorage.setItem("cfgVibe", JSON.stringify(cfgVibe));
-            }
-            if (config.cfgSound !== undefined) {
-              cfgSound = config.cfgSound;
-              localStorage.setItem("cfgSound", JSON.stringify(cfgSound));
-            }
-            if (config.canId) {
-              document.getElementById("can-id-input").value = config.canId;
-              canIdVal = config.canId; // Update global variable
-              localStorage.setItem("canIdVal", canIdVal);
-              // Note: We don't auto-send ID to device here to avoid unexpected traffic. 
-              // User must click SET if they want to push valid ID to device immediately, 
-              // or it will be used next time/manually.
-            }
-            // Ver 4.0 Handle missing auth array in old configs
-            if (!btnAuth || !Array.isArray(btnAuth)) {
-              btnAuth = Array(8).fill(false);
-              localStorage.setItem("btnAuth", JSON.stringify(btnAuth));
-            }
-            // Ver 4.4: Handle missing delay arrays
-            if (!btnOnDelays || !Array.isArray(btnOnDelays)) {
-              btnOnDelays = config.btnOnDelays || Array(8).fill(0);
-              localStorage.setItem("btnOnDelays", JSON.stringify(btnOnDelays));
-            }
-            if (!btnOffDelays || !Array.isArray(btnOffDelays)) {
-              btnOffDelays = config.btnOffDelays || Array(8).fill(0);
-              localStorage.setItem("btnOffDelays", JSON.stringify(btnOffDelays));
-            }
-            log("Config Loaded");
-            alert("Configuration Loaded Successfully");
-            // Refresh UI
-            renderConfigList();
-            // Refresh Keypad Visuals (Colors/Labels/Icons)
-            renderKeypadGrid();
-          } catch (err) {
-            log("Import Err: " + err);
-            alert("Failed to load config: Invalid JSON");
+    }
+    /* --- Import / Export Logic --- */
+    function exportConfig() {
+      const config = {
+        version: "2.5",
+        timestamp: new Date().toISOString(),
+        btnLabels: btnLabels,
+        btnModes: btnModes,
+        btnColors: btnColors,
+        btnOnVals: btnOnVals,
+        btnOffVals: btnOffVals,
+        btnEndian: btnEndian,
+        btnIcons: btnIcons,
+        cfgVibe: cfgVibe,
+        btnIcons: btnIcons,
+        btnAuth: btnAuth, // Ver 4.0
+        btnOnDelays: btnOnDelays, // Ver 4.4
+        btnOffDelays: btnOffDelays, // Ver 4.4
+        cfgVibe: cfgVibe,
+        cfgSound: cfgSound,
+        canId: canIdVal
+      };
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "m5_can_config.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      log("Config Exported");
+    }
+    function importConfig() {
+      document.getElementById('import-file').click();
+    }
+    function handleFileSelect(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const config = JSON.parse(e.target.result);
+          // Validation / Restoration
+          if (config.btnLabels && Array.isArray(config.btnLabels)) {
+            btnLabels = config.btnLabels;
+            localStorage.setItem("btnLabels", JSON.stringify(btnLabels));
           }
-        };
-        reader.readAsText(file);
-        // Reset input so same file can be selected again if needed
-        input.value = '';
-      }
-      /* Init Keypad */
-      function renderKeypadGrid() {
-        const container = document.getElementById("keypad");
-        container.innerHTML = "";
-        for (let i = 1; i <= 8; i++) {
-          const b = document.createElement("div");
-          b.id = `btn-${i}`;
-          b.className = "key-btn";
-          const iconKey = btnIcons[i - 1];
-          let innerHTML = '';
-          if (iconKey && iconKey !== 'none' && ICONS[iconKey]) {
-            // Icon + Label
-            innerHTML = `
+          if (config.btnModes && Array.isArray(config.btnModes)) {
+            btnModes = config.btnModes;
+            localStorage.setItem("btnModes", JSON.stringify(btnModes));
+          }
+          if (config.btnColors && Array.isArray(config.btnColors)) {
+            btnColors = config.btnColors;
+            localStorage.setItem("btnColors", JSON.stringify(btnColors));
+          }
+          if (config.btnOnVals && Array.isArray(config.btnOnVals)) {
+            btnOnVals = config.btnOnVals;
+            localStorage.setItem("btnOnVals", JSON.stringify(btnOnVals));
+          }
+          if (config.btnOffVals && Array.isArray(config.btnOffVals)) {
+            btnOffVals = config.btnOffVals;
+            localStorage.setItem("btnOffVals", JSON.stringify(btnOffVals));
+          }
+          if (config.btnEndian && Array.isArray(config.btnEndian)) {
+            btnEndian = config.btnEndian;
+            localStorage.setItem("btnEndian", JSON.stringify(btnEndian));
+          }
+          if (config.btnIcons && Array.isArray(config.btnIcons)) {
+            btnIcons = config.btnIcons;
+            localStorage.setItem("btnIcons", JSON.stringify(btnIcons));
+          }
+          if (config.btnAuth && Array.isArray(config.btnAuth)) { // Ver 4.0
+            btnAuth = config.btnAuth;
+            localStorage.setItem("btnAuth", JSON.stringify(btnAuth));
+          }
+          if (config.cfgVibe !== undefined) {
+            cfgVibe = config.cfgVibe;
+            localStorage.setItem("cfgVibe", JSON.stringify(cfgVibe));
+          }
+          if (config.cfgSound !== undefined) {
+            cfgSound = config.cfgSound;
+            localStorage.setItem("cfgSound", JSON.stringify(cfgSound));
+          }
+          if (config.canId) {
+            document.getElementById("can-id-input").value = config.canId;
+            canIdVal = config.canId; // Update global variable
+            localStorage.setItem("canIdVal", canIdVal);
+            // Note: We don't auto-send ID to device here to avoid unexpected traffic. 
+            // User must click SET if they want to push valid ID to device immediately, 
+            // or it will be used next time/manually.
+          }
+          // Ver 4.0 Handle missing auth array in old configs
+          if (!btnAuth || !Array.isArray(btnAuth)) {
+            btnAuth = Array(8).fill(false);
+            localStorage.setItem("btnAuth", JSON.stringify(btnAuth));
+          }
+          // Ver 4.4: Handle missing delay arrays
+          if (!btnOnDelays || !Array.isArray(btnOnDelays)) {
+            btnOnDelays = config.btnOnDelays || Array(8).fill(0);
+            localStorage.setItem("btnOnDelays", JSON.stringify(btnOnDelays));
+          }
+          if (!btnOffDelays || !Array.isArray(btnOffDelays)) {
+            btnOffDelays = config.btnOffDelays || Array(8).fill(0);
+            localStorage.setItem("btnOffDelays", JSON.stringify(btnOffDelays));
+          }
+          log("Config Loaded");
+          alert("Configuration Loaded Successfully");
+          // Refresh UI
+          renderConfigList();
+          // Refresh Keypad Visuals (Colors/Labels/Icons)
+          renderKeypadGrid();
+        } catch (err) {
+          log("Import Err: " + err);
+          alert("Failed to load config: Invalid JSON");
+        }
+      };
+      reader.readAsText(file);
+      // Reset input so same file can be selected again if needed
+      input.value = '';
+    }
+    /* Init Keypad */
+    function renderKeypadGrid() {
+      const container = document.getElementById("keypad");
+      container.innerHTML = "";
+      for (let i = 1; i <= 8; i++) {
+        const b = document.createElement("div");
+        b.id = `btn-${i}`;
+        b.className = "key-btn";
+        const iconKey = btnIcons[i - 1];
+        let innerHTML = '';
+        if (iconKey && iconKey !== 'none' && ICONS[iconKey]) {
+          // Icon + Label
+          innerHTML = `
               <div style="width:50%; height:50%; margin-bottom:5px;">${ICONS[iconKey]}</div>
               <span id="label-${i}" class="btn-label" style="font-size:0.9rem;">${btnLabels[i - 1]}</span>
             `;
-          } else {
-            // Label Only
-            innerHTML = `
+        } else {
+          // Label Only
+          innerHTML = `
               <span id="label-${i}" class="btn-label">${btnLabels[i - 1]}</span>
             `;
-          }
-          b.innerHTML = innerHTML;
-          b.style.setProperty('--btn-color', btnColors[i - 1]);
-          b.addEventListener('pointerdown', (e) => {
-            handleInteraction(i, e);
-          });
-          container.appendChild(b);
         }
+        b.innerHTML = innerHTML;
+        b.style.setProperty('--btn-color', btnColors[i - 1]);
+        b.addEventListener('pointerdown', (e) => {
+          handleInteraction(i, e);
+        });
+        container.appendChild(b);
       }
-      // Initial Render
-      renderKeypadGrid();
-      // Initial Render
-      renderConfigList();
-      // Init Status (Show Overlay)
-      updateStatus(false);
-      function updateMainSoundIcon() {
-        const btn = document.getElementById("main-sound-btn");
-        if (btn) {
-          btn.innerHTML = cfgSound ? "🔊" : "🔇";
-          btn.style.color = cfgSound ? "#0f0" : "#888";
-        }
+    }
+    // Initial Render
+    renderKeypadGrid();
+    // Initial Render
+    renderConfigList();
+    // Init Status (Show Overlay)
+    updateStatus(false);
+    function updateMainSoundIcon() {
+      const btn = document.getElementById("main-sound-btn");
+      if (btn) {
+        btn.innerHTML = cfgSound ? "🔊" : "🔇";
+        btn.style.color = cfgSound ? "#0f0" : "#888";
       }
-      function toggleSoundMain() {
-        setSound(!cfgSound);
-        updateMainSoundIcon();
-      }
-      // Update icon on load
+    }
+    function toggleSoundMain() {
+      setSound(!cfgSound);
       updateMainSoundIcon();
+    }
+    // Update icon on load
+    updateMainSoundIcon();
+    async function handleStartConnect() {
+      try {
+        // 1. Request Fullscreen (Interaction requirement)
+        toggleFullscreen();
+        // 2. Connect Bluetooth
+        await connect();
+        // 3. Keep Awake (WakeLock)
+        requestWakeLock();
+      } catch (e) {
+        console.error("Start Connect Error:", e);
+        log("Err: " + e);
+      }
+    }
   </script>
   <!-- Icon Picker Overlay -->
   <div id="icon-picker-overlay"
