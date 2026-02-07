@@ -684,72 +684,87 @@
         btnEndian = Array(8).fill('big');
       } else {
         btnEndian = Array(8).fill('little');
+        localStorage.setItem("btnEndian", JSON.stringify(btnEndian));
+        renderConfigList();
       }
-      localStorage.setItem("btnEndian", JSON.stringify(btnEndian));
-      renderConfigList();
-    }
-    /* --- Auth Logic (Ver 4.0) --- */
-    function toggleBtnAuth(index) {
-      btnAuth[index] = !btnAuth[index];
-      localStorage.setItem("btnAuth", JSON.stringify(btnAuth));
-      renderConfigList();
-    }
-    // Ver 4.1: Biometric Registration Logic
-    // Converts an ArrayBuffer to a Base64 URL-safe string
-    function bufferToBase64(buffer) {
-      const bytes = new Uint8Array(buffer);
-      let binary = '';
-      for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
+      /* --- Auth Logic (Ver 4.0) --- */
+      async function toggleBtnAuth(index) {
+        // Ver 4.2: Require Auth to Unlock
+        if (btnAuth[index]) {
+          // Currently Locked -> Unlocking
+          const authResult = await checkBiometricAuth();
+          if (!authResult) {
+            alert("🔒 Authentication Failed. Cannot Unlock.");
+            return;
+          }
+        }
+        btnAuth[index] = !btnAuth[index];
+        localStorage.setItem("btnAuth", JSON.stringify(btnAuth));
+        renderConfigList();
       }
-      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    }
-    // Converts a Base64 URL-safe string to an ArrayBuffer
-    function base64ToBuffer(base64) {
-      const binary = atob(base64.replace(/-/g, '+').replace(/_/g, '/'));
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
+      // Ver 4.1: Biometric Registration Logic
+      // Converts an ArrayBuffer to a Base64 URL-safe string
+      function bufferToBase64(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
       }
-      return bytes.buffer;
+      // Converts a Base64 URL-safe string to an ArrayBuffer
+      function base64ToBuffer(base64) {
+        const binary = atob(base64.replace(/-/g, '+').replace(/_/g, '/'));
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes.buffer;
+      }
+      async function registerBiometric() {
+        if (!window.PublicKeyCredential) {
+          alert("WebAuthn not supported.");
+          return;
+        }
+        try {
+          const challenge = new Uint8Array(32);
+          window.crypto.getRandomValues(challenge);
+          const publicKey = {
+            challenge: challenge,
+            rp: { name: "M5Atom CAN Keypad", id: window.location.hostname },
+            user: {
+              id: new Uint8Array(16), // Dummy user ID
+              name: "user@local",
+              displayName: "Local User"
+            },
+            pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
+            authenticatorSelection: {
+              authenticatorAttachment: "platform", // FaceID / TouchID
+              userVerification: "required"
+            },
+            timeout: 60000,
+            attestation: "none"
+          };
+          const credential = await navigator.credentials.create({ publicKey });
+          // Save Credential ID
+          const credId = bufferToBase64(credential.rawId);
+          localStorage.setItem("authCredentialId", credId);
+          authCredentialId = credId;
+          alert("Biometric Registered Successfully! 🔓 -> 🔒");
+          renderConfigList(); // Update UI
+        } catch (err) {
+          console.error("Registration failed", err);
+          alert("Registration Failed: " + err.message);
+        }
+      }
     }
-    async function registerBiometric() {
-      if (!window.PublicKeyCredential) {
-        alert("WebAuthn not supported.");
+    async function clearBiometric() {
+      // Ver 4.2: Require Auth to Clear
+      const authResult = await checkBiometricAuth();
+      if (!authResult) {
+        alert("🔒 Authentication Failed. Cannot Clear.");
         return;
       }
-      try {
-        const challenge = new Uint8Array(32);
-        window.crypto.getRandomValues(challenge);
-        const publicKey = {
-          challenge: challenge,
-          rp: { name: "M5Atom CAN Keypad", id: window.location.hostname },
-          user: {
-            id: new Uint8Array(16), // Dummy user ID
-            name: "user@local",
-            displayName: "Local User"
-          },
-          pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
-          authenticatorSelection: {
-            authenticatorAttachment: "platform", // FaceID / TouchID
-            userVerification: "required"
-          },
-          timeout: 60000,
-          attestation: "none"
-        };
-        const credential = await navigator.credentials.create({ publicKey });
-        // Save Credential ID
-        const credId = bufferToBase64(credential.rawId);
-        localStorage.setItem("authCredentialId", credId);
-        authCredentialId = credId;
-        alert("Biometric Registered Successfully! 🔓 -> 🔒");
-        renderConfigList(); // Update UI
-      } catch (err) {
-        console.error("Registration failed", err);
-        alert("Registration Failed: " + err.message);
-      }
-    }
-    function clearBiometric() {
       if (confirm("Clear registered biometric data?")) {
         localStorage.removeItem("authCredentialId");
         authCredentialId = null;
