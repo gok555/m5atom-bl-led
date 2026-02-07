@@ -679,13 +679,14 @@
       localStorage.setItem("btnEndian", JSON.stringify(btnEndian));
       renderConfigList();
     }
-    if (type === 'normal') {
-      btnEndian = Array(8).fill('big');
-    } else {
-      btnEndian = Array(8).fill('little');
-    }
-    localStorage.setItem("btnEndian", JSON.stringify(btnEndian));
-    renderConfigList();
+    function applyPreset(type) {
+      if (type === 'normal') {
+        btnEndian = Array(8).fill('big');
+      } else {
+        btnEndian = Array(8).fill('little');
+      }
+      localStorage.setItem("btnEndian", JSON.stringify(btnEndian));
+      renderConfigList();
     }
     /* --- Auth Logic (Ver 4.0) --- */
     async function toggleBtnAuth(index) {
