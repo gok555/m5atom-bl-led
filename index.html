@@ -1462,8 +1462,13 @@
     }
     function triggerFeedback() {
       // Vibrate
-      if (cfgVibe && navigator.vibrate) {
-        navigator.vibrate(15);
+      if (cfgVibe) {
+        if (navigator.vibrate) {
+          // Increased duration for better perception
+          navigator.vibrate(40);
+        } else {
+          console.log("Vibration API not supported");
+        }
       }
       // Sound
       if (cfgSound && audioCtx) {
