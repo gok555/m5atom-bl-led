@@ -1413,10 +1413,16 @@
         b.addEventListener('pointerdown', (e) => handlePointerDown(i, e));
         b.addEventListener('pointerup', (e) => handlePointerUp(i, e));
         b.addEventListener('pointerleave', (e) => handlePointerUp(i, e)); // Treat leave as cancel/up
-        b.addEventListener('contextmenu', (e) => e.preventDefault()); // Prevent right click menu
+        // Ver 4.7: Force suppress system context menu/vibration
+        b.addEventListener('touchstart', (e) => {
+          if (e.cancelable) e.preventDefault();
+        }, { passive: false });
+        b.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); return false; });
         container.appendChild(b);
       }
     }
+    // Global Context Menu Block
+    window.addEventListener('contextmenu', (e) => { e.preventDefault(); return false; }, { capture: true });
     // Initial Render
     renderKeypadGrid();
     /* --- Feedback Logic (Ver 3.1) --- */
