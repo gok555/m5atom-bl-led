@@ -432,6 +432,17 @@
           <button id="set-id-btn" class="action-btn btn-orange" onclick="setCanId()">SET</button>
         </div>
       </div>
+      <!-- Biometric Registration (Ver 4.1) -->
+      <div class="control-row" style="margin-top: 10px; border-bottom:1px solid #444; padding-bottom:10px;">
+        <div style="color: #ccc; font-size: 0.9rem; margin-bottom: 5px;">Biometric Registration</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+          <div id="bio-status" style="color:#888; font-size:0.8rem;">Checking...</div>
+          <button id="btn-bio-reg" class="action-btn btn-blue" onclick="registerBiometric()"
+            style="padding:10px; font-size:0.9rem; width:auto;">Register</button>
+          <button id="btn-bio-clear" class="action-btn btn-red" onclick="clearBiometric()"
+            style="padding:10px; font-size:0.9rem; width:auto; display:none;">Clear</button>
+        </div>
+      </div>
       <!-- Feedback Settings (Ver 3.1) -->
       <div class="control-row" style="margin-top: 10px; border-bottom:1px solid #444; padding-bottom:10px;">
         <div style="color: #ccc; font-size: 0.9rem; margin-bottom: 5px;">Feedback (Haptic/Audio)</div>
@@ -530,6 +541,8 @@
     // Ver 4.0: Biometric Auth
     let btnAuth = JSON.parse(localStorage.getItem("btnAuth")) ||
       Array(8).fill(false);
+    // Ver 4.1: Auth Credential ID (Local Registration)
+    let authCredentialId = localStorage.getItem("authCredentialId");
     // Ver 3.1: Feedback
     let cfgVibe = JSON.parse(localStorage.getItem("cfgVibe")) !== false; // Default true
     let cfgSound = JSON.parse(localStorage.getItem("cfgSound")) !== false; // Default true (Changed from false)
@@ -551,6 +564,21 @@
     let canIdVal = localStorage.getItem("canIdVal") || "100";
     /* --- Config UI Generation --- */
     function renderConfigList() {
+      // Update Bio Status UI
+      const st = document.getElementById("bio-status");
+      const btnReg = document.getElementById("btn-bio-reg");
+      const btnClear = document.getElementById("btn-bio-clear");
+      if (authCredentialId) {
+        st.textContent = "✅ Registered";
+        st.style.color = "#28a745";
+        btnReg.style.display = "none";
+        btnClear.style.display = "block";
+      } else {
+        st.textContent = "⚠️ Not Registered";
+        st.style.color = "#ffc107";
+        btnReg.style.display = "block";
+        btnClear.style.display = "none";
+      }
       const container = document.getElementById('config-list-container');
       container.innerHTML = '';
       btnLabels.forEach((label, i) => {
@@ -666,13 +694,79 @@
       localStorage.setItem("btnAuth", JSON.stringify(btnAuth));
       renderConfigList();
     }
+    // Ver 4.1: Biometric Registration Logic
+    // Converts an ArrayBuffer to a Base64 URL-safe string
+    function bufferToBase64(buffer) {
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+    // Converts a Base64 URL-safe string to an ArrayBuffer
+    function base64ToBuffer(base64) {
+      const binary = atob(base64.replace(/-/g, '+').replace(/_/g, '/'));
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes.buffer;
+    }
+    async function registerBiometric() {
+      if (!window.PublicKeyCredential) {
+        alert("WebAuthn not supported.");
+        return;
+      }
+      try {
+        const challenge = new Uint8Array(32);
+        window.crypto.getRandomValues(challenge);
+        const publicKey = {
+          challenge: challenge,
+          rp: { name: "M5Atom CAN Keypad", id: window.location.hostname },
+          user: {
+            id: new Uint8Array(16), // Dummy user ID
+            name: "user@local",
+            displayName: "Local User"
+          },
+          pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
+          authenticatorSelection: {
+            authenticatorAttachment: "platform", // FaceID / TouchID
+            userVerification: "required"
+          },
+          timeout: 60000,
+          attestation: "none"
+        };
+        const credential = await navigator.credentials.create({ publicKey });
+        // Save Credential ID
+        const credId = bufferToBase64(credential.rawId);
+        localStorage.setItem("authCredentialId", credId);
+        authCredentialId = credId;
+        alert("Biometric Registered Successfully! 🔓 -> 🔒");
+        renderConfigList(); // Update UI
+      } catch (err) {
+        console.error("Registration failed", err);
+        alert("Registration Failed: " + err.message);
+      }
+    }
+    function clearBiometric() {
+      if (confirm("Clear registered biometric data?")) {
+        localStorage.removeItem("authCredentialId");
+        authCredentialId = null;
+        renderConfigList();
+      }
+    }
     async function checkBiometricAuth() {
       if (!window.PublicKeyCredential) {
         alert("Biometric authentication not supported on this device/browser.");
         return false;
       }
+      // Ver 4.1: Check if registered
+      if (!authCredentialId) {
+        alert("Biometric not registered. Please register in Settings.");
+        return false;
+      }
       try {
-        // Challenge must be a buffer
         const challenge = new Uint8Array(32);
         window.crypto.getRandomValues(challenge);
         const publicKeyCredentialRequestOptions = {
@@ -680,6 +774,11 @@
           timeout: 60000,
           userVerification: "required",
           rpId: window.location.hostname,
+          allowCredentials: [{
+            id: base64ToBuffer(authCredentialId),
+            type: 'public-key',
+            transports: ['internal']
+          }]
         };
         const credential = await navigator.credentials.get({
           publicKey: publicKeyCredentialRequestOptions
@@ -689,7 +788,6 @@
         }
       } catch (err) {
         console.error("Auth failed", err);
-        // Alert user or just return false
       }
       return false;
     }
